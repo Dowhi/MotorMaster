@@ -807,29 +807,21 @@ function renderGarage() {
           </div>
           <span class="status-dot status-${getVehicleHealth(v.id)}" title="Estado de salud"></span>
         </div>
-        <div class="vehicle-details-grid">
-          <div class="detail-labels">
-            <span>Matrícula:</span>
-            <span>Fecha Matrícula:</span>
-            <span>Combustible:</span>
-            <span>Última ITV:</span>
-            <span class="text-warning">Sanciones:</span>
-            <span class="text-primary font-bold">Gasto Total:</span>
-          </div>
-          <div class="detail-values">
-            <span>${v.matricula || '—'}</span>
-            <span>${fmt.date(v.fechaMatriculacion) || '—'}</span>
-            <span>${v.combustible || '—'} ${v.distintivo ? `<span class="badge ${v.distintivo === '0' || v.distintivo === 'ECO' ? 'badge-success' : 'badge-info'}" style="font-size: 0.6rem; padding: 1px 4px; margin-left: 4px;">${v.distintivo}</span>` : ''}</span>
-            <span>${fmt.date(v.ultimaITV) || '—'}</span>
-            <span>👮 ${getMultasByVehicle(v.id).filter(m => m.estado === 'Pendiente').length} pend.</span>
-            <span class="gasto font-black">${fmt.currency(v.gastoTotal)}</span>
-          </div>
+        <div class="vehicle-compact-grid">
+          <div class="compact-item"><small>MATRÍCULA</small><span>${v.matricula || '—'}</span></div>
+          <div class="compact-item"><small>FECHA MAT.</small><span>${fmt.date(v.fechaMatriculacion) || '—'}</span></div>
+          <div class="compact-item"><small>COMBUSTIBLE</small><span>${v.combustible || '—'} ${v.distintivo ? `<span class="badge ${v.distintivo === '0' || v.distintivo === 'ECO' ? 'badge-success' : 'badge-info'}" style="font-size: 0.5rem; padding: 1px 3px;">${v.distintivo}</span>` : ''}</span></div>
+          <div class="compact-item"><small>ÚLTIMA ITV</small><span>${fmt.date(v.ultimaITV) || '—'}</span></div>
+          <div class="compact-item"><small>SANCIONES</small><span class="text-warning">👮 ${getMultasByVehicle(v.id).filter(m => m.estado === 'Pendiente').length} <small>pend.</small></span></div>
+          <div class="compact-item"><small class="text-primary">GASTO TOTAL</small><strong class="gasto">${fmt.currency(v.gastoTotal)}</strong></div>
         </div>
         <div class="vehicle-card-actions">
-          ${v.id !== activeVehicleId ? `<button class="btn btn-secondary btn-sm" data-sel="${v.id}">Seleccionar</button>` : ''}
-          <button class="btn btn-ghost btn-sm" onclick="openSaleReport('${v.id}')" title="Ficha de Venta">📄</button>
-          <button class="btn btn-ghost btn-sm" data-km="${v.id}">✏️ KM</button>
-          <button class="btn btn-danger btn-sm" data-del="${v.id}">✕</button>
+          ${v.id !== activeVehicleId ? `<button class="btn btn-secondary btn-xs flex-1" data-sel="${v.id}">Seleccionar</button>` : '<span class="flex-1 text-[10px] text-accent font-bold px-2 uppercase tracking-tighter self-center">✓ Activo</span>'}
+          <div class="flex gap-1">
+            <button class="btn btn-ghost btn-xs" onclick="openSaleReport('${v.id}')" title="Ficha de Venta">📄</button>
+            <button class="btn btn-ghost btn-xs" data-km="${v.id}">✏️ KM</button>
+            <button class="btn btn-danger btn-xs" data-del="${v.id}">✕</button>
+          </div>
         </div>
       </div>`).join('')}
     </div>`}`;

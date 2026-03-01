@@ -501,12 +501,51 @@ body.retro-mode .sidebar {
     gap: var(--sp-sm);
 }
 
+.vehicle-compact-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: var(--sp-md);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.compact-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.compact-item small {
+    font-size: 0.6rem;
+    color: var(--clr-text-muted);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.compact-item span,
+.compact-item strong {
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .vehicle-card-actions {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: center;
     gap: var(--sp-sm);
-    padding: var(--sp-md);
+    padding: 8px var(--sp-md);
     border-top: 1px solid var(--clr-border);
+    background: var(--clr-surface-2);
+}
+
+.btn-xs {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    height: 28px;
 }
 
 /* Vehicle Hero */
