@@ -1343,10 +1343,12 @@ function renderMultas() {
         <th>Acción</th>
         <th></th>
       </tr></thead>
-      <tbody>${items.map(m => `<tr>
+      <tbody>${items.map(m => {
+    const hechoText = m.hecho || m.motivo || 'Sin detalles';
+    return `<tr>
         <td data-label="Expediente"><code class="id-code" title="ID: ${m.id}">${m.expediente || 'S/N'}</code></td>
-        <td data-label="Fecha / Prov.">${fmt.date(m.fechaDenuncia)}<br><small class="text-muted">${m.provincia || '—'}</small></td>
-        <td data-label="Hecho"><span title="${m.hecho}">${m.hecho.substring(0, 30)}${m.hecho.length > 30 ? '...' : ''}</span></td>
+        <td data-label="Fecha / Prov.">${fmt.date(m.fechaDenuncia || m.fechaLimite)}<br><small class="text-muted">${m.provincia || '—'}</small></td>
+        <td data-label="Hecho"><span title="${hechoText}">${hechoText.substring(0, 30)}${hechoText.length > 30 ? '...' : ''}</span></td>
         <td data-label="Importes">
           <small class="text-muted">Denuncia: ${fmt.currency(m.importe)}</small><br>
           <strong class="${m.estado === 'Pagada' ? 'gasto' : 'text-primary'}">${m.estado === 'Pagada' ? `Pagado: ${fmt.currency(m.importePagado)}` : `Pend: ${fmt.currency(m.importe)}`}</strong>
@@ -1357,7 +1359,8 @@ function renderMultas() {
         </td>
         <td data-label="Acción">${m.estado === 'Pendiente' ? `<button class="btn btn-secondary btn-xs" data-pay="${m.id}">✓ Pagar</button>` : '—'}</td>
         <td><button class="btn btn-danger btn-xs" data-delete="multas" data-id="${m.id}">✕</button></td>
-      </tr>`).join('')}</tbody>
+      </tr>`;
+  }).join('')}</tbody>
     </table></div>
     <div class="totals-bar">
       <span>Total Pagado: <strong class="gasto">${fmt.currency(totalPag)}</strong> &nbsp;|&nbsp; Deuda Pendiente: <strong style="color:var(--clr-warning)">${fmt.currency(totalPend)}</strong></span>
