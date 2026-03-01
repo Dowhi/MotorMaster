@@ -171,6 +171,7 @@ function router() {
   renderVehicleSelector();
   renderAlertBanner(getActiveVehicle()?.id);
   updateGlobalAlertBadge();
+  if (typeof checkAndNotifyCriticalAlerts === 'function') checkAndNotifyCriticalAlerts();
   fn();
 }
 
@@ -603,6 +604,27 @@ function renderSettings() {
         </div>
       </section>
 
+      <!-- Sincronización & Notificaciones -->
+      <section>
+        <h3 class="eyebrow-title">Sincronización & Notificaciones</h3>
+        <div class="glass-card rounded-lg p-4 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-bold">Notificaciones de Escritorio</p>
+              <p class="text-[10px] text-slate-500">Avisos proactivos de ITV, Seguros y Multas</p>
+            </div>
+            <button class="btn btn-sm ${Notification.permission === 'granted' ? 'btn-ghost opacity-50' : 'btn-primary'}" 
+              ${Notification.permission === 'granted' ? 'disabled' : ''} 
+              id="btn-enable-notif">
+              ${Notification.permission === 'granted' ? 'Activado ✓' : 'Activar'}
+            </button>
+          </div>
+          <p class="text-[9px] text-slate-500 italic">
+            * Las notificaciones te avisarán incluso si tienes la pestaña en segundo plano. Requiere permiso del navegador.
+          </p>
+        </div>
+      </section>
+
       <!-- Seguridad y Datos -->
       <section>
         <h3 class="eyebrow-title">Seguridad y Datos</h3>
@@ -633,6 +655,15 @@ function renderSettings() {
 
     </div>
   `;
+
+  // Re-bind events
+  const btnNotif = document.getElementById('btn-enable-notif');
+  if (btnNotif) {
+    btnNotif.onclick = async () => {
+      const ok = await requestNotificationPermission();
+      if (ok) renderSettings();
+    };
+  }
 
   // Re-bind events (same as original renderSettings)
   document.getElementById('btn-export-json').onclick = () => {

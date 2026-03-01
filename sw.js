@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motormaster-v2';
+const CACHE_NAME = 'motormaster-v3';
 const ASSETS = [
     './',
     './index.html',
@@ -7,6 +7,7 @@ const ASSETS = [
     './css/app.css',
     './js/state.js',
     './js/alerts.js',
+    './js/notifications.js',
     './js/app.js',
     './img/icon-512.png',
     './manifest.json'
@@ -31,5 +32,22 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
     e.respondWith(
         caches.match(e.request).then(res => res || fetch(e.request))
+    );
+});
+
+/* Notification Click Handling */
+self.addEventListener('notificationclick', e => {
+    e.notification.close();
+    e.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+            if (clientList.length > 0) {
+                let client = clientList[0];
+                for (let c of clientList) {
+                    if (c.focused) client = c;
+                }
+                return client.focus();
+            }
+            return clients.openWindow('./#/alerts');
+        })
     );
 });
