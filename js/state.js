@@ -150,6 +150,7 @@ function addVehicle(data) {
     cilindrada: '',
     distintivo: '',
     fechaMatriculacion: '',
+    ultimaITV: '',
     ...data,
     id: generateId('VEH')
   };

@@ -809,17 +809,17 @@ function renderGarage() {
         </div>
         <div class="vehicle-details-grid">
           <div class="detail-labels">
-            <span>Año:</span>
             <span>Matrícula:</span>
+            <span>Fecha Matrícula:</span>
             <span>Combustible:</span>
-            <span>Kilometraje:</span>
+            <span>Última ITV:</span>
             <span class="text-primary font-bold">Gasto Total:</span>
           </div>
           <div class="detail-values">
-            <span>${v.año}</span>
             <span>${v.matricula || '—'}</span>
+            <span>${fmt.date(v.fechaMatriculacion) || '—'}</span>
             <span>${v.combustible || '—'} ${v.distintivo ? `<span class="badge ${v.distintivo === '0' || v.distintivo === 'ECO' ? 'badge-success' : 'badge-info'}" style="font-size: 0.6rem; padding: 1px 4px; margin-left: 4px;">${v.distintivo}</span>` : ''}</span>
-            <span>${fmt.km(v.km)}</span>
+            <span>${fmt.date(v.ultimaITV) || '—'}</span>
             <span class="gasto font-black">${fmt.currency(v.gastoTotal)}</span>
           </div>
         </div>
@@ -851,7 +851,7 @@ function renderGarage() {
         <div class="form-group"><label>Modelo *</label><input id="veh-modelo" class="form-input" placeholder="Corolla"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Año *</label><input id="veh-año" type="number" class="form-input" placeholder="2020" min="1900" max="2030"></div>
+        <div class="form-group"><label>Fecha de Matriculación *</label><input id="veh-fmat" type="date" class="form-input"></div>
         <div class="form-group"><label>Matrícula</label><input id="veh-mat" class="form-input" placeholder="1234 ABC"></div>
       </div>
       
@@ -883,7 +883,7 @@ function renderGarage() {
             <option value="🏎️">Deportivo (🏎️)</option>
           </select>
         </div>
-        <div class="form-group"><label>Última revisión conocida</label><input id="veh-ulrev" type="date" class="form-input"></div>
+        <div class="form-group"><label>Última ITV favorable</label><input id="veh-ulitv" type="date" class="form-input"></div>
       </div>
 
       <div class="form-actions pt-4 border-t border-white/5">
@@ -933,18 +933,19 @@ function renderGarage() {
     document.getElementById('btn-save-veh').onclick = () => {
       const marca = document.getElementById('veh-marca').value.trim();
       const modelo = document.getElementById('veh-modelo').value.trim();
-      const año = document.getElementById('veh-año').value;
+      const fmat = document.getElementById('veh-fmat').value;
       const km = document.getElementById('veh-km').value;
 
-      if (!marca || !modelo || !año || !km) { alert('Completa los campos obligatorios (*)'); return; }
+      if (!marca || !modelo || !fmat || !km) { alert('Completa los campos obligatorios (*)'); return; }
 
       addVehicle({
         marca,
         modelo,
-        año: parseInt(año),
+        fechaMatriculacion: fmat,
+        año: parseInt(fmat.split('-')[0]), // Derivar año de la fecha
         km: parseInt(km),
         matricula: document.getElementById('veh-mat').value.trim(),
-        ultimaRevision: document.getElementById('veh-ulrev').value,
+        ultimaITV: document.getElementById('veh-ulitv').value,
         bastidor: document.getElementById('veh-bastidor').value.trim(),
         combustible: document.getElementById('veh-fuel').value.trim(),
         cilindrada: document.getElementById('veh-cc').value.trim(),
@@ -1251,8 +1252,21 @@ function renderITV() {
     document.getElementById('btn-save-itv').onclick = () => {
       const fecha = document.getElementById('itv-fecha').value;
       const venc = document.getElementById('itv-venc').value;
+      const res = document.getElementById('itv-res').value;
       if (!fecha || !venc) { alert('Completa los campos obligatorios (*)'); return; }
-      addITV({ fechaInspeccion: fecha, resultado: document.getElementById('itv-res').value, fechaVencimiento: venc, notas: document.getElementById('itv-notas').value.trim() });
+
+      addITV({ fechaInspeccion: fecha, resultado: res, fechaVencimiento: venc, notas: document.getElementById('itv-notas').value.trim() });
+
+      // Si el resultado es favorable, actualizar el vehículo
+      if (res === 'Apto' || res === 'Apto con Defectos') {
+        const s = getState();
+        const vehicle = s.vehicles.find(veh => veh.id === v.id);
+        if (vehicle) {
+          vehicle.ultimaITV = fecha;
+          saveState();
+        }
+      }
+
       closeModal(); renderITV(); renderAlertBanner(v.id); showToast('ITV registrada correctamente');
     };
   };
