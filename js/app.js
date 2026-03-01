@@ -913,7 +913,10 @@ function renderGarage() {
         if (data) {
           document.getElementById('veh-marca').value = data.marca || '';
           document.getElementById('veh-modelo').value = data.modelo || '';
-          document.getElementById('veh-año').value = data.año || '';
+          // Al ser input date, necesitamos formato YYYY-MM-DD. Ponemos 1 de enero del año de fabricación.
+          if (data.año) {
+            document.getElementById('veh-fmat').value = `${data.año}-01-01`;
+          }
           document.getElementById('veh-fuel').value = data.combustible || '';
           document.getElementById('veh-cc').value = data.cilindrada || '';
           document.getElementById('veh-label').value = data.distintivo || '';
