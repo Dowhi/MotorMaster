@@ -55,8 +55,9 @@ firebase.auth().onAuthStateChanged(user => {
   } else {
     console.log("Modo local (Sin usuario)");
     _state = loadState();
-    if (typeof router === 'function') router();
   }
+  // Forzar refresco de la UI tras cambio de auth
+  if (typeof router === 'function') router();
 });
 
 async function loadFromFirestore() {
@@ -71,7 +72,8 @@ async function loadFromFirestore() {
       if (typeof router === 'function') router();
     } else {
       // Si no hay datos en la nube, subir el estado local actual
-      saveToFirestore();
+      await saveToFirestore();
+      if (typeof router === 'function') router();
     }
   } catch (err) {
     console.error("Error al cargar de Firestore:", err);
@@ -141,7 +143,16 @@ function getActiveVehicle() {
 
 /* ---- VEHICLES ---- */
 function addVehicle(data) {
-  const v = { gastoTotal: 0, ...data, id: generateId('VEH') };
+  const v = {
+    gastoTotal: 0,
+    bastidor: '',
+    combustible: '',
+    cilindrada: '',
+    distintivo: '',
+    fechaMatriculacion: '',
+    ...data,
+    id: generateId('VEH')
+  };
   _state.vehicles.push(v);
   if (!_state.activeVehicleId) _state.activeVehicleId = v.id;
   if (!_state.mainVehicleId) _state.mainVehicleId = v.id;

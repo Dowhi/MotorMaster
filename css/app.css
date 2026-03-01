@@ -635,9 +635,9 @@ body.retro-mode .sidebar {
 }
 
 .interval-item input {
-    background: var(--clr-surface-2);
+    background: #0F172A;
     border: 1px solid var(--clr-border);
-    color: white;
+    color: #F8FAFC;
     padding: 8px;
     border-radius: var(--r-sm);
     font-family: inherit;
@@ -663,13 +663,24 @@ body.retro-mode .sidebar {
 }
 
 .form-input {
-    background: #050B15;
+    background: #0F172A;
     border: 1px solid var(--clr-border);
     padding: 12px;
     border-radius: 8px;
-    color: white;
+    color: #F8FAFC;
     font-family: inherit;
     font-size: 1rem;
+    width: 100%;
+}
+
+.form-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.form-input:focus {
+    border-color: var(--clr-accent);
+    outline: none;
+    background: #131d2e;
 }
 
 .form-actions {

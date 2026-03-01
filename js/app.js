@@ -655,6 +655,57 @@ function exportToCSV() {
   showToast('Archivo CSV generado');
 }
 
+/**
+ * Simulación de consulta a DGT/IDEX por bastidor
+ */
+async function consultarDGT(vin) {
+  if (!vin) return null;
+  showToast('Consultando DGT/IDEX...');
+
+  // Simulación de delay de red
+  await new Promise(r => setTimeout(r, 1500));
+
+  const vinUpper = vin.toUpperCase().trim();
+
+  // Mock de datos para demostración
+  const mockData = {
+    'VSSZZZ6LZ': {
+      marca: 'Seat',
+      modelo: 'Ibiza',
+      año: 2005,
+      combustible: 'Diésel',
+      cilindrada: '1.9 TDI',
+      distintivo: 'B',
+      fechaMatriculacion: '2005-06-15'
+    },
+    'VF38BRHZY': {
+      marca: 'Peugeot',
+      modelo: '308',
+      año: 2018,
+      combustible: 'Gasolina',
+      cilindrada: '1.2 PureTech',
+      distintivo: 'C',
+      fechaMatriculacion: '2018-09-22'
+    },
+    'WBAJF1105': {
+      marca: 'BMW',
+      modelo: '320d',
+      año: 2022,
+      combustible: 'Híbrido Diésel',
+      cilindrada: '2.0',
+      distintivo: 'ECO',
+      fechaMatriculacion: '2022-03-10'
+    }
+  };
+
+  // Buscar coincidencia parcial (primeros caracteres usuales)
+  for (const key in mockData) {
+    if (vinUpper.startsWith(key)) return mockData[key];
+  }
+
+  return null;
+}
+
 /* ---- VEHICLE SELECTOR ---- */
 function renderVehicleSelector() {
   const { vehicles, activeVehicleId } = getState();
@@ -719,16 +770,16 @@ function renderGarage() {
           <div class="detail-labels">
             <span>Año:</span>
             <span>Matrícula:</span>
+            <span>Combustible:</span>
             <span>Kilometraje:</span>
-            <span>Última revisión:</span>
-            <span>Gasto Total:</span>
+            <span class="text-primary font-bold">Gasto Total:</span>
           </div>
           <div class="detail-values">
             <span>${v.año}</span>
             <span>${v.matricula || '—'}</span>
+            <span>${v.combustible || '—'} ${v.distintivo ? `<span class="badge ${v.distintivo === '0' || v.distintivo === 'ECO' ? 'badge-success' : 'badge-info'}" style="font-size: 0.6rem; padding: 1px 4px; margin-left: 4px;">${v.distintivo}</span>` : ''}</span>
             <span>${fmt.km(v.km)}</span>
-            <span>${fmt.date(v.ultimaRevision)}</span>
-            <span class="gasto">${fmt.currency(v.gastoTotal)}</span>
+            <span class="gasto font-black">${fmt.currency(v.gastoTotal)}</span>
           </div>
         </div>
         <div class="vehicle-card-actions">
@@ -742,16 +793,44 @@ function renderGarage() {
 
   document.getElementById('btn-add-veh').onclick = () => {
     openModal('Nuevo Vehículo', `<div class="form">
+      <!-- DGT Lookup Row -->
+      <div class="bg-primary/5 p-3 rounded-lg border border-primary/20 mb-4">
+        <label class="text-[10px] font-black text-primary uppercase tracking-widest block mb-2">Consulta Automática DGT (Opcional)</label>
+        <div class="flex gap-2">
+          <input id="veh-bastidor" class="form-input flex-1" placeholder="Nº de Bastidor (VIN)...">
+          <button class="btn btn-primary btn-sm" id="btn-query-dgt">Consultar</button>
+        </div>
+        <p class="text-[9px] text-slate-500 mt-2 italic">Prueba con: VSSZZZ6LZ (Seat), VF38BRHZY (Peugeot) o WBAJF1105 (BMW)</p>
+      </div>
+
       <div class="form-row">
         <div class="form-group"><label>Marca *</label><input id="veh-marca" class="form-input" placeholder="Toyota"></div>
         <div class="form-group"><label>Modelo *</label><input id="veh-modelo" class="form-input" placeholder="Corolla"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Año *</label><input id="veh-año" type="number" class="form-input" placeholder="2020" min="1900" max="2030"></div>
-        <div class="form-group"><label>Matrícula  </label><input id="veh-mat" class="form-input" placeholder="1234 ABC"></div>
+        <div class="form-group"><label>Matrícula</label><input id="veh-mat" class="form-input" placeholder="1234 ABC"></div>
       </div>
+      
       <div class="form-row">
-        <div class="form-group"><label>Kilometraje actual *</label><input id="veh-km" type="number" class="form-input" placeholder="45000" min="0"></div>
+        <div class="form-group"><label>Combustible</label><input id="veh-fuel" class="form-input" placeholder="Gasolina, Diésel..."></div>
+        <div class="form-group"><label>Cilindrada</label><input id="veh-cc" class="form-input" placeholder="1.6, 2.0..."></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group"><label>Distintivo Ambiental</label>
+          <select id="veh-label" class="form-input">
+            <option value="">Ninguno</option>
+            <option value="0">0 Emisiones (Azul)</option>
+            <option value="ECO">ECO (Verde/Azul)</option>
+            <option value="C">C (Verde)</option>
+            <option value="B">B (Amarillo)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Km actuales *</label><input id="veh-km" type="number" class="form-input" placeholder="45000" min="0"></div>
+      </div>
+
+      <div class="form-row">
         <div class="form-group"><label>Icono</label>
           <select id="veh-icon" class="form-input">
             <option value="🚗">Turismo (🚗)</option>
@@ -761,20 +840,63 @@ function renderGarage() {
             <option value="🏎️">Deportivo (🏎️)</option>
           </select>
         </div>
+        <div class="form-group"><label>Última revisión conocida</label><input id="veh-ulrev" type="date" class="form-input"></div>
       </div>
-      <div class="form-group"><label>Última revisión conocida</label><input id="veh-ulrev" type="date" class="form-input"></div>
-      <div class="form-actions">
+
+      <div class="form-actions pt-4 border-t border-white/5">
         <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
         <button class="btn btn-primary" id="btn-save-veh">Registrar Vehículo</button>
       </div></div>`);
+
+    // DGT Query Action
+    document.getElementById('btn-query-dgt').onclick = async (e) => {
+      const vin = document.getElementById('veh-bastidor').value;
+      if (!vin) return;
+
+      const originalText = e.target.textContent;
+      e.target.textContent = '...';
+      e.target.disabled = true;
+
+      const data = await consultarDGT(vin);
+
+      if (data) {
+        document.getElementById('veh-marca').value = data.marca;
+        document.getElementById('veh-modelo').value = data.modelo;
+        document.getElementById('veh-año').value = data.año;
+        document.getElementById('veh-fuel').value = data.combustible;
+        document.getElementById('veh-cc').value = data.cilindrada;
+        document.getElementById('veh-label').value = data.distintivo;
+        showToast('Datos de DGT volcados correctamente');
+      } else {
+        alert('No se han encontrado datos para este bastidor en el IDEX de DGT. Introduce los datos manualmente.');
+      }
+
+      e.target.textContent = originalText;
+      e.target.disabled = false;
+    };
+
     document.getElementById('btn-save-veh').onclick = () => {
       const marca = document.getElementById('veh-marca').value.trim();
       const modelo = document.getElementById('veh-modelo').value.trim();
       const año = document.getElementById('veh-año').value;
       const km = document.getElementById('veh-km').value;
-      const icono = document.getElementById('veh-icon').value;
+
       if (!marca || !modelo || !año || !km) { alert('Completa los campos obligatorios (*)'); return; }
-      addVehicle({ marca, modelo, año: parseInt(año), km: parseInt(km), matricula: document.getElementById('veh-mat').value.trim(), ultimaRevision: document.getElementById('veh-ulrev').value, icono });
+
+      addVehicle({
+        marca,
+        modelo,
+        año: parseInt(año),
+        km: parseInt(km),
+        matricula: document.getElementById('veh-mat').value.trim(),
+        ultimaRevision: document.getElementById('veh-ulrev').value,
+        bastidor: document.getElementById('veh-bastidor').value.trim(),
+        combustible: document.getElementById('veh-fuel').value.trim(),
+        cilindrada: document.getElementById('veh-cc').value.trim(),
+        distintivo: document.getElementById('veh-label').value,
+        icono: document.getElementById('veh-icon').value
+      });
+
       closeModal(); renderVehicleSelector(); router(); showToast('Vehículo añadido');
     };
   };
