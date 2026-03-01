@@ -160,6 +160,13 @@ function addVehicle(data) {
   saveState(); return v;
 }
 function setActiveVehicle(id) { _state.activeVehicleId = id; saveState(); }
+function updateVehicle(id, data) {
+  const idx = _state.vehicles.findIndex(v => v.id === id);
+  if (idx !== -1) {
+    _state.vehicles[idx] = { ..._state.vehicles[idx], ...data };
+    saveState();
+  }
+}
 function updateVehicleKm(vehicleId, km) {
   const v = _state.vehicles.find(v => v.id === vehicleId);
   if (v) { v.km = km; saveState(); }

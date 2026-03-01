@@ -805,7 +805,7 @@ function renderGarage() {
           </div>
           <span class="status-dot status-${getVehicleHealth(v.id)}" title="Estado de salud"></span>
         </div>
-        <div class="vehicle-compact-grid">
+        <div class="vehicle-compact-grid" data-edit-veh="${v.id}" style="cursor:pointer" title="Haga clic para editar todos los datos del vehículo">
           <div class="compact-item"><small>MATRÍCULA</small><span>${v.matricula || '—'}</span></div>
           <div class="compact-item"><small>FECHA MAT.</small><span>${fmt.date(v.fechaMatriculacion) || '—'}</span></div>
           <div class="compact-item"><small>COMBUSTIBLE</small><span>${v.combustible || '—'} ${v.distintivo ? `<span class="badge ${v.distintivo === '0' || v.distintivo === 'ECO' ? 'badge-success' : 'badge-info'}" style="font-size: 0.5rem; padding: 1px 3px;">${v.distintivo}</span>` : ''}</span></div>
@@ -817,16 +817,17 @@ function renderGarage() {
           ${v.id !== activeVehicleId ? `<button class="btn btn-secondary btn-xs flex-1" data-sel="${v.id}">Seleccionar</button>` : '<span class="flex-1 text-[10px] text-accent font-bold px-2 uppercase tracking-tighter self-center">✓ Activo</span>'}
           <div class="flex gap-1">
             <button class="btn btn-ghost btn-xs" onclick="openSaleReport('${v.id}')" title="Ficha de Venta">📄</button>
-            <button class="btn btn-ghost btn-xs" data-km="${v.id}">✏️ KM</button>
+            <button class="btn btn-ghost btn-xs" data-edit-veh="${v.id}" title="Editar vehículo">✏️</button>
             <button class="btn btn-danger btn-xs" data-del="${v.id}">✕</button>
           </div>
         </div>
       </div>`).join('')}
     </div>`}`;
 
-  document.getElementById('btn-add-veh').onclick = () => {
-    openModal('Nuevo Vehículo', `<div class="form">
-      <!-- DGT Lookup Row -->
+  const showVehicleModal = (existingVeh = null) => {
+    const isEdit = !!existingVeh;
+    openModal(isEdit ? 'Editar Vehículo' : 'Nuevo Vehículo', `<div class="form">
+      ${!isEdit ? `<!-- DGT Lookup Row -->
       <div class="bg-primary/5 p-3 rounded-lg border border-primary/20 mb-4">
         <label class="text-[10px] font-black text-primary uppercase tracking-widest block mb-2">Consulta Automática por Bastidor (VIN)</label>
         <div class="flex gap-2">
@@ -834,96 +835,79 @@ function renderGarage() {
           <button class="btn btn-primary btn-sm" id="btn-query-dgt">Consultar</button>
         </div>
         <p class="text-[9px] text-slate-400 mt-2 italic px-1">
-          <span class="text-primary-400 font-bold">Nota:</span> El bastidor permite recuperar datos térmicos y de fábrica (Marca, Modelo, Año, Motor). La <span class="text-white">Matrícula</span> y <span class="text-white">Fecha de Matriculación</span> son datos de registro nacional y deben introducirse manualmente.
+          <span class="text-primary-400 font-bold">Nota:</span> El bastidor permite recuperar datos térmicos y de fábrica (Marca, Modelo, Motor). La <span class="text-white">Matrícula</span> y <span class="text-white">Fecha de Matriculación</span> deben introducirse manualmente.
         </p>
-      </div>
+      </div>` : `<input type="hidden" id="veh-bastidor" value="${existingVeh.bastidor || ''}">`}
 
       <div class="form-row">
-        <div class="form-group"><label>Marca *</label><input id="veh-marca" class="form-input" placeholder="Toyota"></div>
-        <div class="form-group"><label>Modelo *</label><input id="veh-modelo" class="form-input" placeholder="Corolla"></div>
+        <div class="form-group"><label>Marca *</label><input id="veh-marca" class="form-input" placeholder="Toyota" value="${existingVeh?.marca || ''}"></div>
+        <div class="form-group"><label>Modelo *</label><input id="veh-modelo" class="form-input" placeholder="Corolla" value="${existingVeh?.modelo || ''}"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Fecha de Matriculación *</label><input id="veh-fmat" type="date" class="form-input"></div>
-        <div class="form-group"><label>Matrícula</label><input id="veh-mat" class="form-input" placeholder="1234 ABC"></div>
+        <div class="form-group"><label>Fecha de Matriculación *</label><input id="veh-fmat" type="date" class="form-input" value="${existingVeh?.fechaMatriculacion || ''}"></div>
+        <div class="form-group"><label>Matrícula</label><input id="veh-mat" class="form-input" placeholder="1234 ABC" value="${existingVeh?.matricula || ''}"></div>
       </div>
       
       <div class="form-row">
-        <div class="form-group"><label>Combustible</label><input id="veh-fuel" class="form-input" placeholder="Gasolina, Diésel..."></div>
-        <div class="form-group"><label>Cilindrada</label><input id="veh-cc" class="form-input" placeholder="1.6, 2.0..."></div>
+        <div class="form-group"><label>Combustible</label><input id="veh-fuel" class="form-input" placeholder="Gasolina, Diésel..." value="${existingVeh?.combustible || ''}"></div>
+        <div class="form-group"><label>Cilindrada</label><input id="veh-cc" class="form-input" placeholder="1.6, 2.0..." value="${existingVeh?.cilindrada || ''}"></div>
       </div>
 
       <div class="form-row">
         <div class="form-group"><label>Distintivo Ambiental</label>
           <select id="veh-label" class="form-input">
-            <option value="">Ninguno</option>
-            <option value="0">0 Emisiones (Azul)</option>
-            <option value="ECO">ECO (Verde/Azul)</option>
-            <option value="C">C (Verde)</option>
-            <option value="B">B (Amarillo)</option>
+            <option value="" ${!existingVeh?.distintivo ? 'selected' : ''}>Ninguno</option>
+            <option value="0" ${existingVeh?.distintivo === '0' ? 'selected' : ''}>0 Emisiones (Azul)</option>
+            <option value="ECO" ${existingVeh?.distintivo === 'ECO' ? 'selected' : ''}>ECO (Verde/Azul)</option>
+            <option value="C" ${existingVeh?.distintivo === 'C' ? 'selected' : ''}>C (Verde)</option>
+            <option value="B" ${existingVeh?.distintivo === 'B' ? 'selected' : ''}>B (Amarillo)</option>
           </select>
         </div>
-        <div class="form-group"><label>Km actuales *</label><input id="veh-km" type="number" class="form-input" placeholder="45000" min="0"></div>
+        <div class="form-group"><label>Km actuales *</label><input id="veh-km" type="number" class="form-input" placeholder="45000" min="0" value="${existingVeh?.km || 0}"></div>
       </div>
 
       <div class="form-row">
         <div class="form-group"><label>Icono</label>
           <select id="veh-icon" class="form-input">
-            <option value="🚗">Turismo (🚗)</option>
-            <option value="🚙">SUV / 4x4 (🚙)</option>
-            <option value="🚐">Furgoneta (🚐)</option>
-            <option value="🏍️">Moto (🏍️)</option>
-            <option value="🏎️">Deportivo (🏎️)</option>
+            <option value="🚗" ${existingVeh?.icono === '🚗' ? 'selected' : ''}>Turismo (🚗)</option>
+            <option value="🚙" ${existingVeh?.icono === '🚙' ? 'selected' : ''}>SUV / 4x4 (🚙)</option>
+            <option value="🚐" ${existingVeh?.icono === '🚐' ? 'selected' : ''}>Furgoneta (🚐)</option>
+            <option value="🏍️" ${existingVeh?.icono === '🏍️' ? 'selected' : ''}>Moto (🏍️)</option>
+            <option value="🏎️" ${existingVeh?.icono === '🏎️' ? 'selected' : ''}>Deportivo (🏎️)</option>
           </select>
         </div>
-        <div class="form-group"><label>Última ITV favorable</label><input id="veh-ulitv" type="date" class="form-input"></div>
+        <div class="form-group"><label>Última ITV favorable</label><input id="veh-ulitv" type="date" class="form-input" value="${existingVeh?.ultimaITV || ''}"></div>
       </div>
 
       <div class="form-actions pt-4 border-t border-white/5">
         <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" id="btn-save-veh">Registrar Vehículo</button>
+        <button class="btn btn-primary" id="btn-save-veh">${isEdit ? 'Guardar Cambios' : 'Registrar Vehículo'}</button>
       </div></div>`);
 
-    // DGT Query Action
-    document.getElementById('btn-query-dgt').onclick = async (e) => {
-      const vinInput = document.getElementById('veh-bastidor');
-      const vin = vinInput.value.replace(/[^A-Za-z0-9]/g, '').trim();
-
-      if (!vin || vin.length < 5) {
-        showToast('⚠ Introduce un bastidor válido');
-        vinInput.focus();
-        return;
-      }
-
-      const btn = e.currentTarget;
-      const originalText = btn.textContent;
-      btn.innerHTML = '<span class="animate-pulse">🔍 Consultando...</span>';
-      btn.disabled = true;
-
-      try {
-        const data = await consultarDGT(vin);
-
-        if (data) {
-          document.getElementById('veh-marca').value = data.marca || '';
-          document.getElementById('veh-modelo').value = data.modelo || '';
-          // Al ser input date, necesitamos formato YYYY-MM-DD. Ponemos 1 de enero del año de fabricación.
-          if (data.año) {
-            document.getElementById('veh-fmat').value = `${data.año}-01-01`;
+    if (!isEdit) {
+      document.getElementById('btn-query-dgt').onclick = async (e) => {
+        const vinInput = document.getElementById('veh-bastidor');
+        const vin = vinInput.value.replace(/[^A-Za-z0-9]/g, '').trim();
+        if (!vin || vin.length < 5) { showToast('⚠ Introduce un bastidor válido'); vinInput.focus(); return; }
+        const btn = e.currentTarget; const originalText = btn.textContent;
+        btn.innerHTML = '<span class="animate-pulse">🔍 Consultando...</span>'; btn.disabled = true;
+        try {
+          const data = await consultarDGT(vin);
+          if (data) {
+            document.getElementById('veh-marca').value = data.marca || '';
+            document.getElementById('veh-modelo').value = data.modelo || '';
+            if (data.año) document.getElementById('veh-fmat').value = `${data.año}-01-01`;
+            document.getElementById('veh-fuel').value = data.combustible || '';
+            document.getElementById('veh-cc').value = data.cilindrada || '';
+            document.getElementById('veh-label').value = data.distintivo || '';
+            showToast('✓ Datos técnicos volcados con éxito');
+          } else {
+            alert('No hemos podido identificar este bastidor en el registro global (NHTSA). Por favor, completa los campos manualmente.');
           }
-          document.getElementById('veh-fuel').value = data.combustible || '';
-          document.getElementById('veh-cc').value = data.cilindrada || '';
-          document.getElementById('veh-label').value = data.distintivo || '';
-          showToast('✓ Datos técnicos volcados con éxito');
-        } else {
-          alert('No hemos podido identificar este bastidor en el registro global (NHTSA). Puede que sea un vehículo muy específico o fabricado fuera de los mercados principales de datos. Por favor, completa los campos manualmente.');
-        }
-      } catch (err) {
-        console.error("Error en flujo DGT UI:", err);
-        alert('Hubo un problema de conexión. Por favor, inténtalo de nuevo o rellena los datos a mano.');
-      } finally {
-        btn.textContent = originalText;
-        btn.disabled = false;
-      }
-    };
+        } catch (err) { alert('Hubo un problema de conexión. Inténtalo de nuevo.'); }
+        finally { btn.textContent = originalText; btn.disabled = false; }
+      };
+    }
 
     document.getElementById('btn-save-veh').onclick = () => {
       const marca = document.getElementById('veh-marca').value.trim();
@@ -933,11 +917,9 @@ function renderGarage() {
 
       if (!marca || !modelo || !fmat || !km) { alert('Completa los campos obligatorios (*)'); return; }
 
-      addVehicle({
-        marca,
-        modelo,
-        fechaMatriculacion: fmat,
-        año: parseInt(fmat.split('-')[0]), // Derivar año de la fecha
+      const payload = {
+        marca, modelo, fechaMatriculacion: fmat,
+        año: parseInt(fmat.split('-')[0]),
         km: parseInt(km),
         matricula: document.getElementById('veh-mat').value.trim(),
         ultimaITV: document.getElementById('veh-ulitv').value,
@@ -946,20 +928,28 @@ function renderGarage() {
         cilindrada: document.getElementById('veh-cc').value.trim(),
         distintivo: document.getElementById('veh-label').value,
         icono: document.getElementById('veh-icon').value
-      });
+      };
 
-      closeModal(); renderVehicleSelector(); router(); showToast('Vehículo añadido');
+      if (isEdit) {
+        updateVehicle(existingVeh.id, payload);
+        showToast('Datos del vehículo actualizados');
+      } else {
+        addVehicle(payload);
+        showToast('Vehículo añadido');
+      }
+      closeModal(); renderGarage(); renderVehicleSelector();
     };
   };
+
+  document.getElementById('btn-add-veh').onclick = () => showVehicleModal();
   content.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { setActiveVehicle(b.dataset.sel); router(); });
-  content.querySelectorAll('[data-km]').forEach(b => b.onclick = () => {
-    const v = getState().vehicles.find(v => v.id === b.dataset.km);
-    openModal('Actualizar Kilometraje', `<div class="form">
-      <div class="form-group"><label>Kilometraje actual (km)</label><input id="km-val" type="number" class="form-input" value="${v?.km || 0}" min="0"></div>
-      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-km">Guardar</button></div></div>`);
-    document.getElementById('btn-save-km').onclick = () => { updateVehicleKm(b.dataset.km, parseInt(document.getElementById('km-val').value)); closeModal(); renderGarage(); showToast('Kilometraje actualizado'); };
+  content.querySelectorAll('[data-edit-veh]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
+    const v = vehicles.find(x => x.id === b.dataset.editVeh);
+    if (v) showVehicleModal(v);
   });
-  content.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+  content.querySelectorAll('[data-del]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
     if (!confirm('¿Eliminar este vehículo y todos sus registros? Esta acción no se puede deshacer.')) return;
     const id = b.dataset.del; const s = getState();
     s.vehicles = s.vehicles.filter(v => v.id !== id);
