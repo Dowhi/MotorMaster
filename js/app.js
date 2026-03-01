@@ -391,8 +391,8 @@ function renderDashboard() {
     { label: 'Revisiones', icon: '🔩', col: 'revisiones', f: 'coste' },
     { label: 'Averías', icon: '⚠️', col: 'averias', f: 'coste' },
     { label: 'Recambios', icon: '📦', col: 'recambios', f: 'precio' },
-    { label: 'Seguros', icon: '🛡️', col: 'seguro', f: 'precioAnual' },
-    { label: 'Multas', icon: '📋', col: 'multas', f: 'importe', filter: m => m.estado === 'Pagada' },
+    { label: 'Seguros', icon: '🛡️', col: 'seguro', f: 'precio' },
+    { label: 'Multas', icon: '📋', col: 'multas', f: 'importePagado', filter: m => m.estado === 'Pagada' },
     { label: 'Otros', icon: '📁', col: 'otros', f: 'importe' },
   ];
 
@@ -400,8 +400,6 @@ function renderDashboard() {
     const items = state[c.col].filter(r => r.vehicleId === vid && (!c.filter || c.filter(r)) && (r.fecha || r.fechaVencimiento || r.fechaRenovacion || '').startsWith(filterYear));
     return sum + items.reduce((s, r) => s + parseFloat(r[c.f] || 0), 0);
   }, 0);
-
-  const monthlySaving = (totalGastoYear / 12).toFixed(2);
 
   const costRowsYear = cats.map(c => {
     const items = state[c.col].filter(r => r.vehicleId === vid && (!c.filter || c.filter(r)) && (r.fecha || r.fechaVencimiento || r.fechaRenovacion || '').startsWith(filterYear));
@@ -1276,42 +1274,98 @@ function renderSeguro() {
   if (!v) { c.innerHTML = noVehicle('Seguro'); return; }
   const items = getSeguroByVehicle(v.id);
   c.innerHTML = `
-    <div class="page-header"><div><h1 class="page-title">Seguro</h1><p class="page-sub">Gestión de Pólizas</p></div>
-      <button class="btn btn-primary" id="btn-add-seg">+ Registrar Seguro</button></div>
-    ${!items.length ? emptySection('🛡️', 'Sin registros de seguro') : `
+    <div class="page-header"><div><h1 class="page-title">Seguro</h1><p class="page-sub">Gestión de Pólizas y Coberturas</p></div>
+      <button class="btn btn-primary" id="btn-add-seg">+ Nuevo Seguro</button></div>
+    ${!items.length ? emptySection('🛡️', 'Sin pólizas de seguro registradas') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>ID</th><th>Compañía</th><th>Tipo de Póliza</th><th>Precio Anual</th><th>Renovación</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr>
+        <th>Compañía / Póliza</th>
+        <th>Cobertura / Tipo</th>
+        <th>Precio / Pago</th>
+        <th>Vencimiento</th>
+        <th>Estado</th>
+        <th class="text-right">Acciones</th>
+      </tr></thead>
       <tbody>${items.map(s => `<tr>
-        <td data-label="ID"><code class="id-code">${s.id}</code></td>
-        <td data-label="Compañía"><strong>${s.compania}</strong></td>
-        <td data-label="Tipo">${s.tipo}</td>
-        <td data-label="Precio" class="gasto">${fmt.currency(s.precioAnual)}</td>
-        <td data-label="Renovación">${fmt.date(s.fechaRenovacion)}</td>
-        <td data-label="Estado">${daysBadge(s.fechaRenovacion)}</td>
-        <td><button class="btn btn-danger btn-xs" data-delete="seguro" data-id="${s.id}">✕</button></td>
+        <td data-label="Compañía"><strong>${s.compania}</strong><br><small class="text-muted">Pól: ${s.poliza || 'S/N'}</small></td>
+        <td data-label="Cobertura">${s.tipoSG}<br><small class="text-muted">${s.tipoPol || '—'}</small></td>
+        <td data-label="Precio" class="gasto">${fmt.currency(s.precio)}<br><small class="text-muted">Pago: ${s.tipoPago}</small></td>
+        <td data-label="Vencimiento">${fmt.date(s.fechaVencimiento)}</td>
+        <td data-label="Estado">${daysBadge(s.fechaVencimiento)}</td>
+        <td class="text-right">
+          <div class="flex gap-1 justify-end">
+             <button class="btn btn-ghost btn-xs" data-edit-seg="${s.id}" title="Editar seguro" style="border:1px solid var(--clr-border)">✏️</button>
+             <button class="btn btn-danger btn-xs" data-delete="seguro" data-id="${s.id}">✕</button>
+          </div>
+        </td>
       </tr>`).join('')}</tbody>
     </table></div>`}`;
-  document.getElementById('btn-add-seg').onclick = () => {
-    openModal('Registrar Seguro', `<div class="form">
+
+  const showSeguroModal = (existingSeguro = null) => {
+    const isEdit = !!existingSeguro;
+    openModal(isEdit ? 'Editar Póliza de Seguro' : 'Registrar Nuevo Seguro', `<div class="form">
       <div class="form-row">
-        <div class="form-group"><label>Compañía *</label><input id="sg-comp" class="form-input" placeholder="Ej: Mapfre"></div>
-        <div class="form-group"><label>Tipo de póliza *</label><select id="sg-tipo" class="form-input"><option>Todo Riesgo</option><option>Todo Riesgo con Franquicia</option><option>Terceros Ampliado</option><option>Terceros</option></select></div>
+        <div class="form-group"><label>Compañía Aseguradora *</label><input id="sg-comp" class="form-input" placeholder="Ej: Mapfre" value="${existingSeguro?.compania || ''}"></div>
+        <div class="form-group"><label>Nº de Póliza</label><input id="sg-pol" class="form-input" placeholder="Nº Póliza..." value="${existingSeguro?.poliza || ''}"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Precio anual (€) *</label><input id="sg-precio" type="number" class="form-input" placeholder="0.00" step="0.01" min="0"></div>
-        <div class="form-group"><label>Fecha de renovación *</label><input id="sg-renov" type="date" class="form-input"></div>
+        <div class="form-group"><label>Tipo de Seguro *</label><select id="sg-tipo-sg" class="form-input">
+          <option ${existingSeguro?.tipoSG === 'Todo Riesgo' ? 'selected' : ''}>Todo Riesgo</option>
+          <option ${existingSeguro?.tipoSG === 'Todo Riesgo con Franquicia' ? 'selected' : ''}>Todo Riesgo con Franquicia</option>
+          <option ${existingSeguro?.tipoSG === 'Terceros Ampliado' ? 'selected' : ''}>Terceros Ampliado</option>
+          <option ${existingSeguro?.tipoSG === 'Terceros' ? 'selected' : ''}>Terceros</option>
+        </select></div>
+        <div class="form-group"><label>Tipo de Póliza</label><input id="sg-tipo-pol" class="form-input" placeholder="Ej: Particular, Profesional..." value="${existingSeguro?.tipoPol || ''}"></div>
       </div>
-      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-seg">Registrar</button></div>
+      <div class="form-row">
+        <div class="form-group"><label>Fecha de Vencimiento *</label><input id="sg-venc" type="date" class="form-input" value="${existingSeguro?.fechaVencimiento || ''}"></div>
+        <div class="form-group"><label>Tipo de Pago *</label><select id="sg-pago" class="form-input">
+          <option ${existingSeguro?.tipoPago === 'Anual' ? 'selected' : ''}>Anual</option>
+          <option ${existingSeguro?.tipoPago === 'Semestral' ? 'selected' : ''}>Semestral</option>
+          <option ${existingSeguro?.tipoPago === 'Trimestral' ? 'selected' : ''}>Trimestral</option>
+          <option ${existingSeguro?.tipoPago === 'Mensual' ? 'selected' : ''}>Mensual</option>
+        </select></div>
+      </div>
+      <div class="form-group"><label>Importe del Recibo (€) *</label><input id="sg-precio" type="number" class="form-input" placeholder="0.00" step="0.01" value="${existingSeguro?.precio || ''}"></div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-seg">${isEdit ? 'Guardar Cambios' : 'Registrar Seguro'}</button></div>
     </div>`);
+
     document.getElementById('btn-save-seg').onclick = () => {
       const comp = document.getElementById('sg-comp').value.trim();
+      const venc = document.getElementById('sg-venc').value;
       const precio = document.getElementById('sg-precio').value;
-      const renov = document.getElementById('sg-renov').value;
-      if (!comp || precio === '' || !renov) { alert('Completa los campos obligatorios (*)'); return; }
-      addSeguro({ compania: comp, tipo: document.getElementById('sg-tipo').value, precioAnual: parseFloat(precio), fechaRenovacion: renov });
-      closeModal(); renderSeguro(); renderAlertBanner(v.id); showToast('Seguro registrado — Gasto actualizado');
+
+      if (!comp || !venc || precio === '') { alert('Completa los campos obligatorios (*)'); return; }
+
+      const data = {
+        compania: comp,
+        poliza: document.getElementById('sg-pol').value.trim(),
+        tipoSG: document.getElementById('sg-tipo-sg').value,
+        tipoPol: document.getElementById('sg-tipo-pol').value.trim(),
+        fechaVencimiento: venc,
+        tipoPago: document.getElementById('sg-pago').value,
+        precio: parseFloat(precio)
+      };
+
+      if (isEdit) {
+        updateSeguro(existingSeguro.id, data);
+        showToast('Póliza actualizada correctamente');
+      } else {
+        addSeguro(data);
+        showToast('Póliza de seguro registrada — Gasto actualizado');
+      }
+
+      closeModal(); renderSeguro(); renderAlertBanner(v.id);
     };
   };
+
+  document.getElementById('btn-add-seg').onclick = () => showSeguroModal();
+  c.querySelectorAll('[data-edit-seg]').forEach(b => b.onclick = () => {
+    const s = items.find(x => x.id === b.dataset.editSeg);
+    if (s) showSeguroModal(s);
+  });
+
   setupDeleteBtns(renderSeguro);
 }
 

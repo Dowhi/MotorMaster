@@ -208,8 +208,24 @@ function getITVByVehicle(vid) { return _state.itv.filter(i => i.vehicleId === vi
 function addSeguro(data) {
   const s = { ...data, id: generateId('SEG'), vehicleId: _state.activeVehicleId };
   _state.seguro.push(s);
-  addGasto(_state.activeVehicleId, data.precioAnual);
+  if (data.precio) addGasto(_state.activeVehicleId, data.precio);
   saveState(); return s;
+}
+function updateSeguro(id, data) {
+  const sIndex = _state.seguro.findIndex(s => s.id === id);
+  if (sIndex === -1) return;
+  const s = _state.seguro[sIndex];
+
+  // Ajustar gasto si el precio cambia
+  const oldPrecio = parseFloat(s.precio || 0);
+  const newPrecio = parseFloat(data.precio || 0);
+  if (oldPrecio !== newPrecio) {
+    const v = _state.vehicles.find(v => v.id === s.vehicleId);
+    if (v) v.gastoTotal = (parseFloat(v.gastoTotal) || 0) - oldPrecio + newPrecio;
+  }
+
+  _state.seguro[sIndex] = { ...s, ...data };
+  saveState();
 }
 function getSeguroByVehicle(vid) { return _state.seguro.filter(s => s.vehicleId === vid); }
 

@@ -25,11 +25,11 @@ function collectAlerts(vehicleId) {
     state.itv.filter(i => i.vehicleId === vehicleId && i.fechaVencimiento)
         .forEach(i => pushAlert('ITV vence', i.fechaVencimiento));
 
-    state.seguro.filter(s => s.vehicleId === vehicleId && s.fechaRenovacion)
-        .forEach(s => pushAlert(`Seguro: renovar (${s.compania})`, s.fechaRenovacion));
+    state.seguro.filter(s => s.vehicleId === vehicleId && (s.fechaVencimiento || s.fechaRenovacion))
+        .forEach(s => pushAlert(`Seguro: renovar (${s.compania})`, s.fechaVencimiento || s.fechaRenovacion));
 
     state.multas.filter(m => m.vehicleId === vehicleId && m.estado === 'Pendiente' && m.fechaLimite)
-        .forEach(m => pushAlert(`Multa pendiente: ${m.motivo}`, m.fechaLimite));
+        .forEach(m => pushAlert(`Multa: ${m.expediente || m.hecho || m.motivo || 'pago pendiente'}`, m.fechaLimite));
 
     state.otros.filter(o => o.vehicleId === vehicleId && o.fechaVencimiento)
         .forEach(o => pushAlert(o.descripcion, o.fechaVencimiento));
