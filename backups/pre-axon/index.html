@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MotorMaster — Gestión Automotriz</title>
+  <meta name="description"
+    content="Centro de control logístico para el mantenimiento de vehículos. Gestiona revisiones, averías, recambios y documentación.">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0F172A">
+  <link rel="apple-touch-icon" href="img/icon-512.png">
+  <!-- PWA / Mobile optimization -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔧</text></svg>">
+  <meta name="theme-color" content="#0F172A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Roboto:wght@400;500;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+
+<body>
+
+  <!-- Proximity Alert Banner -->
+  <div id="alert-banner" class="alert-banner hidden"></div>
+
+  <!-- App Shell: Sidebar + Content -->
+  <div class="app-shell">
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🔧</span>
+        <span>Motor<span class="logo-accent">Master</span></span>
+      </div>
+      <button class="menu-toggle" id="menu-toggle">☰</button>
+    </header>
+
+    <!-- Sidebar Overlay (click to close menu) -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🔧</span>
+        <span>Motor<span class="logo-accent">Master</span></span>
+      </div>
+
+      <!-- Vehicle Selector -->
+      <div id="vehicle-selector" class="vehicle-selector"></div>
+
+      <!-- Navigation -->
+      <nav class="sidebar-nav">
+
+        <div class="nav-group">
+          <span class="nav-group-label">Principal</span>
+          <a href="#/" class="nav-item" data-route="">
+            <span class="nav-icon">📊</span><span>Dashboard</span>
+          </a>
+          <a href="#/calendar" class="nav-item" data-route="calendar">
+            <span class="nav-icon">📅</span><span>Calendario Global</span>
+          </a>
+          <a href="#/garage" class="nav-item" data-route="garage">
+            <span class="nav-icon">🚗</span><span>Garaje</span>
+          </a>
+          <a href="#/timeline" class="nav-item" data-route="timeline">
+            <span class="nav-icon">⏳</span><span>Cronología</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <span class="nav-group-label">Vehículo</span>
+          <a href="#/revisiones" class="nav-item" data-route="revisiones">
+            <span class="nav-icon">🔩</span><span>Revisiones</span>
+          </a>
+          <a href="#/averias" class="nav-item" data-route="averias">
+            <span class="nav-icon">⚠️</span><span>Averías</span>
+          </a>
+          <a href="#/recambios" class="nav-item" data-route="recambios">
+            <span class="nav-icon">📦</span><span>Recambios</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <span class="nav-group-label">Documentación</span>
+          <a href="#/itv" class="nav-item" data-route="itv">
+            <span class="nav-icon">🔍</span><span>ITV</span>
+          </a>
+          <a href="#/seguro" class="nav-item" data-route="seguro">
+            <span class="nav-icon">🛡️</span><span>Seguro</span>
+          </a>
+          <a href="#/multas" class="nav-item" data-route="multas">
+            <span class="nav-icon">📋</span><span>Multas</span>
+          </a>
+          <a href="#/otros" class="nav-item" data-route="otros">
+            <span class="nav-icon">📁</span><span>Otros</span>
+          </a>
+          <a href="#/guantera" class="nav-item" data-route="guantera">
+            <span class="nav-icon">📁</span><span>Guantera</span>
+          </a>
+        </div>
+
+      </nav>
+
+      <footer class="sidebar-footer">
+        <a href="#/settings" class="nav-item" data-route="settings">
+          <span class="nav-icon">⚙️</span><span>Ajustes & Datos</span>
+        </a>
+        <a href="https://github.com" target="_blank" class="nav-item">
+          <span class="nav-icon">❓</span><span>Ayuda</span>
+        </a>
+      </footer>
+    </aside>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content" id="main-content">
+      <!-- Rendered dynamically by router -->
+    </main>
+
+  </div><!-- /.app-shell -->
+
+  <!-- ===== MODAL ===== -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button class="modal-close" id="modal-close" title="Cerrar">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ===== SCRIPTS ===== -->
+  <script src="js/state.js"></script>
+  <script src="js/alerts.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('SW registered'))
+          .catch(err => console.log('SW error:', err));
+      });
+    }
+
+    // Mobile Menu Toggle
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+
+    if (menuToggle && sidebar && overlay) {
+      const toggleMenu = () => {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+      };
+      menuToggle.addEventListener('click', toggleMenu);
+      overlay.addEventListener('click', toggleMenu);
+
+      // Close menu when clicking nav items on mobile
+      sidebar.addEventListener('click', (e) => {
+        if (e.target.closest('.nav-item')) {
+          sidebar.classList.remove('active');
+          overlay.classList.remove('active');
+        }
+      });
+    }
+  </script>
+
+</body>
+
+</html>

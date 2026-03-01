@@ -1,0 +1,193 @@
+/* ===== STATE.JS — MotorMaster localStorage store ===== */
+
+const STATE_KEY = 'motormaster_v1';
+
+function _initState() {
+  return {
+    vehicles: [],
+    activeVehicleId: null,
+    mainVehicleId: null,
+    accentColor: '#00C2E0',
+    revisiones: [],
+    averias: [],
+    recambios: [],
+    itv: [],
+    seguro: [],
+    multas: [],
+    otros: [],
+    documentos: [],
+    viajes: [],
+    kmIntervals: {},
+    retroMode: false,
+    uiScale: 100 // Porcentaje (100 = normal)
+  };
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem(STATE_KEY);
+    const parsed = s ? JSON.parse(s) : _initState();
+    const initial = _initState();
+    Object.keys(initial).forEach(k => {
+      if (parsed[k] === undefined) parsed[k] = initial[k];
+    });
+    // Apply custom accent color if exists
+    if (parsed.accentColor) document.documentElement.style.setProperty('--clr-accent', parsed.accentColor);
+    // Apply retro mode if active
+    if (parsed.retroMode) document.body.classList.add('retro-mode');
+    // Apply UI Scale
+    if (parsed.uiScale) document.documentElement.style.fontSize = `${parsed.uiScale}%`;
+    return parsed;
+  }
+  catch { return _initState(); }
+}
+
+let _state = loadState();
+function getState() { return _state; }
+function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(_state)); }
+function resetState(newState) { _state = newState || _initState(); saveState(); }
+
+function setMainVehicle(vid) { _state.mainVehicleId = vid; saveState(); }
+function setAccentColor(color) {
+  _state.accentColor = color;
+  document.documentElement.style.setProperty('--clr-accent', color);
+  saveState();
+}
+function setRetroMode(active) {
+  _state.retroMode = active;
+  document.body.classList.toggle('retro-mode', active);
+  saveState();
+}
+function setUiScale(scale) {
+  _state.uiScale = scale;
+  document.documentElement.style.fontSize = `${scale}%`;
+  saveState();
+}
+
+/* User 14: KM Intervals */
+function setKmInterval(vehicleId, op, km) {
+  if (!_state.kmIntervals[vehicleId]) _state.kmIntervals[vehicleId] = {};
+  _state.kmIntervals[vehicleId][op] = km;
+  saveState();
+}
+
+function generateId(prefix) {
+  const ts = Date.now().toString(36).toUpperCase();
+  const r = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${prefix}-${ts}-${r}`;
+}
+
+function getActiveVehicle() {
+  const v = _state.vehicles.find(v => v.id === _state.activeVehicleId) || _state.vehicles.find(v => v.id === _state.mainVehicleId) || _state.vehicles[0] || null;
+  if (v && !_state.activeVehicleId) _state.activeVehicleId = v.id;
+  return v;
+}
+
+/* ---- VEHICLES ---- */
+function addVehicle(data) {
+  const v = { gastoTotal: 0, ...data, id: generateId('VEH') };
+  _state.vehicles.push(v);
+  if (!_state.activeVehicleId) _state.activeVehicleId = v.id;
+  if (!_state.mainVehicleId) _state.mainVehicleId = v.id;
+  saveState(); return v;
+}
+function setActiveVehicle(id) { _state.activeVehicleId = id; saveState(); }
+function updateVehicleKm(vehicleId, km) {
+  const v = _state.vehicles.find(v => v.id === vehicleId);
+  if (v) { v.km = km; saveState(); }
+}
+function addGasto(vehicleId, amount) {
+  const v = _state.vehicles.find(v => v.id === vehicleId);
+  if (v && parseFloat(amount) > 0) { v.gastoTotal = (v.gastoTotal || 0) + parseFloat(amount); saveState(); }
+}
+
+/* ---- REVISIONES ---- */
+function addRevision(data) {
+  const r = { ...data, id: generateId('REV'), vehicleId: _state.activeVehicleId };
+  _state.revisiones.push(r);
+  addGasto(_state.activeVehicleId, data.coste);
+  saveState(); return r;
+}
+function getRevisionesByVehicle(vid) { return _state.revisiones.filter(r => r.vehicleId === vid); }
+
+/* ---- AVERIAS ---- */
+function addAveria(data) {
+  const a = { ...data, id: generateId('AVE'), vehicleId: _state.activeVehicleId };
+  _state.averias.push(a);
+  addGasto(_state.activeVehicleId, data.coste);
+  saveState(); return a;
+}
+function getAveriasByVehicle(vid) { return _state.averias.filter(a => a.vehicleId === vid); }
+
+/* ---- RECAMBIOS ---- */
+function addRecambio(data) {
+  const r = { ...data, id: generateId('REC'), vehicleId: _state.activeVehicleId };
+  _state.recambios.push(r);
+  addGasto(_state.activeVehicleId, data.precio);
+  saveState(); return r;
+}
+function getRecambiosByVehicle(vid) { return _state.recambios.filter(r => r.vehicleId === vid); }
+
+/* ---- ITV ---- */
+function addITV(data) {
+  const i = { ...data, id: generateId('ITV'), vehicleId: _state.activeVehicleId };
+  _state.itv.push(i); if (data.coste) addGasto(_state.activeVehicleId, data.coste);
+  saveState(); return i;
+}
+function getITVByVehicle(vid) { return _state.itv.filter(i => i.vehicleId === vid); }
+
+/* ---- SEGURO ---- */
+function addSeguro(data) {
+  const s = { ...data, id: generateId('SEG'), vehicleId: _state.activeVehicleId };
+  _state.seguro.push(s);
+  addGasto(_state.activeVehicleId, data.precioAnual);
+  saveState(); return s;
+}
+function getSeguroByVehicle(vid) { return _state.seguro.filter(s => s.vehicleId === vid); }
+
+/* ---- MULTAS ---- */
+function addMulta(data) {
+  const m = { ...data, id: generateId('MUL'), vehicleId: _state.activeVehicleId };
+  _state.multas.push(m);
+  if (data.estado === 'Pagada') addGasto(_state.activeVehicleId, data.importe);
+  saveState(); return m;
+}
+function updateMultaEstado(id, estado) {
+  const m = _state.multas.find(m => m.id === id);
+  if (!m) return;
+  if (m.estado !== 'Pagada' && estado === 'Pagada') addGasto(m.vehicleId, m.importe);
+  m.estado = estado; saveState();
+}
+function getMultasByVehicle(vid) { return _state.multas.filter(m => m.vehicleId === vid); }
+
+/* ---- OTROS ---- */
+function addOtro(data) {
+  const o = { ...data, id: generateId('OTR'), vehicleId: _state.activeVehicleId };
+  _state.otros.push(o);
+  addGasto(_state.activeVehicleId, data.importe);
+  saveState(); return o;
+}
+function getOtrosByVehicle(vid) { return _state.otros.filter(o => o.vehicleId === vid); }
+
+/* ---- DOCUMENTOS ---- */
+function addDocumento(data) {
+  const d = { ...data, id: generateId('DOC'), vehicleId: _state.activeVehicleId };
+  _state.documentos.push(d); saveState(); return d;
+}
+function getDocsByVehicle(vid) { return _state.documentos.filter(d => d.vehicleId === vid); }
+
+/* User 6: Viajes */
+function addTripChecklist(data) {
+  const t = { ...data, id: generateId('TRP'), vehicleId: _state.activeVehicleId, checks: [] };
+  _state.viajes.push(t); saveState(); return t;
+}
+function updateTripCheck(id, index, checked) {
+  const t = _state.viajes.find(v => v.id === id);
+  if (t) { t.checks[index] = checked; saveState(); }
+}
+
+/* ---- DELETE ---- */
+function deleteRecord(collection, id) {
+  _state[collection] = _state[collection].filter(r => r.id !== id);
+  saveState();
+}

@@ -1,0 +1,49 @@
+{
+    "marca": "DOWHI-MARCA",
+    "objetivo": "Mantener consistencia visual en UI y landings para la gestión profesional de taxis.",
+    "paleta": {
+        "principal": "#00C2E0",
+        "secundario": "#FFFFFF",
+        "acento": "#00C2E0",
+        "fondo": "#0F172A",
+        "superficie": "#1E293B",
+        "texto": {
+            "principal": "#FFFFFF",
+            "secundario": "#CBD5E1"
+        },
+        "estados": {
+            "exito": "#22C55E",
+            "error": "#EC4899",
+            "advertencia": "#F59E0B"
+        },
+        "bordes": "#334155"
+    },
+    "tipografia": {
+        "titulares": "Inter",
+        "cuerpo": "Roboto",
+        "pesos": {
+            "normal": 400,
+            "medio": 500,
+            "negrita": 700,
+            "extra_bold": 800
+        }
+    },
+    "formas": {
+        "radio_tarjeta": "18px",
+        "radio_boton": "12px",
+        "radio_input": "12px"
+    },
+    "espaciado": {
+        "xs": "4px",
+        "sm": "8px",
+        "md": "12px",
+        "lg": "16px",
+        "xl": "24px",
+        "xxl": "32px"
+    },
+    "componentes": {
+        "boton_principal": "Fondo Cian (#00C2E0), alto contraste, texto Bold",
+        "tarjetas": "Fondo Azul Pizarra (#1E293B), bordes redondeados 18px, sombras sutiles",
+        "layout": "Grid limpio, priorizar legibilidad de datos numéricos y estados"
+    }
+}

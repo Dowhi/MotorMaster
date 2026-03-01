@@ -1,0 +1,49 @@
+:root {
+  /* Paleta DOWHI */
+  --clr-bg: #0F172A;
+  --clr-surface: #1E293B;
+  --clr-surface-2: #263348;
+  --clr-border: #334155;
+  --clr-accent: #00C2E0;
+  --clr-accent-dim: rgba(0, 194, 224, 0.12);
+  --clr-accent-glow: rgba(0, 194, 224, 0.3);
+
+  --clr-text: #FFFFFF;
+  --clr-text-2: #CBD5E1;
+  --clr-text-muted: #64748B;
+
+  --clr-success: #22C55E;
+  --clr-success-dim: rgba(34, 197, 94, 0.12);
+  --clr-warning: #F59E0B;
+  --clr-warning-dim: rgba(245, 158, 11, 0.12);
+  --clr-danger: #EC4899;
+  --clr-danger-dim: rgba(236, 72, 153, 0.12);
+  --clr-info: #38BDF8;
+  --clr-info-dim: rgba(56, 189, 248, 0.12);
+
+  /* Tipografía */
+  --font-head: 'Inter', sans-serif;
+  --font-body: 'Roboto', sans-serif;
+
+  /* Radios */
+  --r-card: 18px;
+  --r-btn: 12px;
+  --r-input: 12px;
+  --r-sm: 8px;
+
+  /* Espaciado Compacto */
+  --sp-xs: 2px;
+  --sp-sm: 4px;
+  --sp-md: 8px;
+  --sp-lg: 12px;
+  --sp-xl: 16px;
+  --sp-xxl: 20px;
+
+  /* Sombras */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 8px 48px rgba(0, 0, 0, 0.6);
+
+  /* Sidebar */
+  --sidebar-w: 260px;
+  --topbar-h: 0px;
+}
