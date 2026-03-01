@@ -123,10 +123,50 @@ const ROUTES = {
 };
 function getRoute() { return (window.location.hash || '').replace('#/', '').replace('#', ''); }
 
+function renderUserProfile() {
+  const el = document.getElementById('user-profile');
+  if (!el) return;
+  const user = firebase.auth().currentUser;
+
+  if (!user) {
+    el.innerHTML = `
+      <button class="w-full bg-primary/10 border border-primary/30 rounded-lg py-2 px-3 flex items-center gap-2 hover:bg-primary/20 transition-all group" id="btn-login-google">
+        <span class="material-symbols-outlined text-primary text-sm">account_circle</span>
+        <span class="text-[10px] font-bold text-primary uppercase tracking-tight">Activar Sincronización</span>
+      </button>
+    `;
+    document.getElementById('btn-login-google').onclick = async () => {
+      try {
+        await googleLogin();
+        showToast('¡Sesión iniciada! Sincronizando datos...');
+      } catch (err) {
+        alert('Error al iniciar sesión: ' + err.message);
+      }
+    };
+  } else {
+    el.innerHTML = `
+      <div class="flex items-center gap-2 bg-slate-800/40 p-2 rounded-lg border border-white/5">
+        <img src="${user.photoURL || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded-full border border-primary/30">
+        <div class="flex-1 overflow-hidden">
+          <p class="text-[10px] font-bold text-slate-200 truncate">${user.displayName}</p>
+          <button class="text-[8px] text-red-400 hover:text-red-300 uppercase font-black tracking-widest" id="btn-logout">Cerrar Sesión</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('btn-logout').onclick = () => {
+      if (confirm('¿Cerrar sesión? Los datos dejarán de sincronizarse.')) {
+        logout();
+        showToast('Sesión cerrada');
+      }
+    };
+  }
+}
+
 function router() {
   const route = getRoute();
   const fn = ROUTES[route] || renderDashboard;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route === route));
+  renderUserProfile();
   renderVehicleSelector();
   renderAlertBanner(getActiveVehicle()?.id);
   fn();
@@ -225,47 +265,58 @@ function renderGuantera() {
       </div>
     </div>`);
 
-    document.getElementById('btn-save-doc').onclick = (btnEvt) => {
+    document.getElementById('btn-save-doc').onclick = async (btnEvt) => {
       const name = document.getElementById('doc-name').value.trim();
       const cat = document.getElementById('doc-cat').value;
       const fileInput = document.getElementById('doc-file');
       const file = fileInput.files[0];
       const btn = btnEvt.target;
+      const user = firebase.auth().currentUser;
 
       if (!name || !file) { alert('Completa los campos obligatorios'); return; }
 
-      // Mostrar estado de carga
       const originalText = btn.textContent;
-      btn.textContent = 'Procesando...';
+      btn.textContent = 'Subiendo...';
       btn.disabled = true;
 
-      const reader = new FileReader();
-      reader.onerror = () => {
-        alert('Error al leer el archivo. Inténtalo de nuevo.');
+      try {
+        let fileDataUrl = '';
+
+        if (user) {
+          // Subida a Firebase Storage
+          const storageRef = firebase.storage().ref(`users/${user.uid}/docs/${Date.now()}_${file.name}`);
+          const snapshot = await storageRef.put(file);
+          fileDataUrl = await snapshot.ref.getDownloadURL();
+        } else {
+          // Fallback a Base64 local si no hay login
+          if (file.size > 2 * 1024 * 1024) {
+            throw new Error('Sin sesión, el archivo es demasiado grande (>2MB). Inicia sesión para subir archivos ilimitados.');
+          }
+          fileDataUrl = await new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = e => res(e.target.result);
+            r.onerror = rej;
+            r.readAsDataURL(file);
+          });
+        }
+
+        addDocumento({
+          nombre: name,
+          categoria: cat,
+          fileData: fileDataUrl,
+          fileType: file.type,
+          fechaSubida: fmt.today()
+        });
+
+        closeModal();
+        renderGuantera();
+        showToast('Documento guardado con éxito');
+      } catch (err) {
+        console.error(err);
+        alert('Error: ' + err.message);
         btn.textContent = originalText;
         btn.disabled = false;
-      };
-
-      reader.onload = (e) => {
-        try {
-          addDocumento({
-            nombre: name,
-            categoria: cat,
-            fileData: e.target.result,
-            fileType: file.type,
-            fechaSubida: fmt.today()
-          });
-          closeModal();
-          renderGuantera();
-          showToast('Documento guardado con éxito');
-        } catch (err) {
-          console.error(err);
-          alert('Error: El archivo es demasiado grande para la memoria del navegador. Prueba con una foto de menor resolución.');
-          btn.textContent = originalText;
-          btn.disabled = false;
-        }
-      };
-      reader.readAsDataURL(file);
+      }
     };
   };
 }

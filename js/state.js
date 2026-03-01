@@ -43,9 +43,65 @@ function loadState() {
 }
 
 let _state = loadState();
+let _currentUser = null;
+let _syncTimeout = null;
+
+// Firebase Auth listener
+firebase.auth().onAuthStateChanged(user => {
+  _currentUser = user;
+  if (user) {
+    console.log("Usuario identificado:", user.email);
+    loadFromFirestore();
+  } else {
+    console.log("Modo local (Sin usuario)");
+    _state = loadState();
+    if (typeof router === 'function') router();
+  }
+});
+
+async function loadFromFirestore() {
+  if (!_currentUser) return;
+  try {
+    const doc = await firebase.firestore().collection('users').doc(_currentUser.uid).get();
+    if (doc.exists) {
+      const remoteData = doc.data();
+      // Mezclar datos locales con remotos (preferencia a remotos)
+      _state = { ..._state, ...remoteData };
+      saveState(false); // Solo local para actualizar caché
+      if (typeof router === 'function') router();
+    } else {
+      // Si no hay datos en la nube, subir el estado local actual
+      saveToFirestore();
+    }
+  } catch (err) {
+    console.error("Error al cargar de Firestore:", err);
+  }
+}
+
+async function saveToFirestore() {
+  if (!_currentUser) return;
+  try {
+    await firebase.firestore().collection('users').doc(_currentUser.uid).set(_state);
+    console.log("Nube actualizada");
+  } catch (err) {
+    console.error("Error al guardar en Firestore:", err);
+  }
+}
+
 function getState() { return _state; }
-function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(_state)); }
-function resetState(newState) { _state = newState || _initState(); saveState(); }
+
+function saveState(sync = true) {
+  localStorage.setItem(STATE_KEY, JSON.stringify(_state));
+  if (sync && _currentUser) {
+    clearTimeout(_syncTimeout);
+    _syncTimeout = setTimeout(saveToFirestore, 1500); // Debounce
+  }
+}
+
+function resetState(newState) {
+  _state = newState || _initState();
+  saveState();
+}
 
 function setMainVehicle(vid) { _state.mainVehicleId = vid; saveState(); }
 function setAccentColor(color) {
