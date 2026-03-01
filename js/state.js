@@ -222,6 +222,29 @@ function addMulta(data) {
   }
   saveState(); return m;
 }
+function updateMulta(id, data) {
+  const mIndex = _state.multas.findIndex(m => m.id === id);
+  if (mIndex === -1) return;
+
+  const m = _state.multas[mIndex];
+
+  // Re-ajustar gasto si el importe pagado cambia
+  if (m.estado === 'Pagada') {
+    const oldImporte = parseFloat(m.importePagado || 0);
+    const newImporte = parseFloat(data.importePagado || 0);
+    if (oldImporte !== newImporte) {
+      // Restar el anterior y sumar el nuevo
+      const v = _state.vehicles.find(v => v.id === m.vehicleId);
+      if (v) v.gastoTotal = (parseFloat(v.gastoTotal) || 0) - oldImporte + newImporte;
+    }
+  } else if (data.estado === 'Pagada') {
+    // Si ha pasado de Pendiente a Pagada dándole a editar
+    addGasto(m.vehicleId, data.importePagado || data.importe);
+  }
+
+  _state.multas[mIndex] = { ...m, ...data };
+  saveState();
+}
 function updateMultaEstado(id, estado, importePagado, fechaPago) {
   const m = _state.multas.find(m => m.id === id);
   if (!m) return;

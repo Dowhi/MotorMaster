@@ -813,6 +813,7 @@ function renderGarage() {
             <span>Fecha Matrícula:</span>
             <span>Combustible:</span>
             <span>Última ITV:</span>
+            <span class="text-warning">Sanciones:</span>
             <span class="text-primary font-bold">Gasto Total:</span>
           </div>
           <div class="detail-values">
@@ -820,6 +821,7 @@ function renderGarage() {
             <span>${fmt.date(v.fechaMatriculacion) || '—'}</span>
             <span>${v.combustible || '—'} ${v.distintivo ? `<span class="badge ${v.distintivo === '0' || v.distintivo === 'ECO' ? 'badge-success' : 'badge-info'}" style="font-size: 0.6rem; padding: 1px 4px; margin-left: 4px;">${v.distintivo}</span>` : ''}</span>
             <span>${fmt.date(v.ultimaITV) || '—'}</span>
+            <span>👮 ${getMultasByVehicle(v.id).filter(m => m.estado === 'Pendiente').length} pend.</span>
             <span class="gasto font-black">${fmt.currency(v.gastoTotal)}</span>
           </div>
         </div>
@@ -1357,7 +1359,12 @@ function renderMultas() {
           ${stateBadge(m.estado)}<br>
           <small>${m.estado === 'Pagada' ? `Pagada el: ${fmt.date(m.fechaPago)}` : `Límite: ${fmt.date(m.fechaLimite)} ${daysBadge(m.fechaLimite)}`}</small>
         </td>
-        <td data-label="Acción">${m.estado === 'Pendiente' ? `<button class="btn btn-secondary btn-xs" data-pay="${m.id}">✓ Pagar</button>` : '—'}</td>
+        <td data-label="Acción">
+          <div class="flex gap-1">
+            <button class="btn btn-secondary btn-xs" data-edit-mul="${m.id}" title="Editar multa">✏️</button>
+            ${m.estado === 'Pendiente' ? `<button class="btn btn-primary btn-xs" data-pay="${m.id}">✓ Pagar</button>` : '—'}
+          </div>
+        </td>
         <td><button class="btn btn-danger btn-xs" data-delete="multas" data-id="${m.id}">✕</button></td>
       </tr>`;
   }).join('')}</tbody>
@@ -1366,30 +1373,35 @@ function renderMultas() {
       <span>Total Pagado: <strong class="gasto">${fmt.currency(totalPag)}</strong> &nbsp;|&nbsp; Deuda Pendiente: <strong style="color:var(--clr-warning)">${fmt.currency(totalPend)}</strong></span>
     </div>`}`;
 
-  document.getElementById('btn-add-mul').onclick = () => {
-    openModal('Registrar Multa / Denuncia', `<div class="form">
+  const showMultaModal = (existingMulta = null) => {
+    const isEdit = !!existingMulta;
+    openModal(isEdit ? 'Editar Multa' : 'Registrar Multa / Denuncia', `<div class="form">
       <div class="form-row">
-        <div class="form-group"><label>Nº Expediente *</label><input id="ml-exp" class="form-input" placeholder="Ej: 12.345.678-9"></div>
-        <div class="form-group"><label>Fecha Denuncia *</label><input id="ml-fden" type="date" class="form-input" value="${fmt.today()}"></div>
+        <div class="form-group"><label>Nº Expediente *</label><input id="ml-exp" class="form-input" placeholder="Ej: 12.345.678-9" value="${existingMulta?.expediente || ''}"></div>
+        <div class="form-group"><label>Fecha Denuncia *</label><input id="ml-fden" type="date" class="form-input" value="${existingMulta?.fechaDenuncia || fmt.today()}"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Provincia / Municipio</label><input id="ml-prov" class="form-input" placeholder="Ej: Madrid"></div>
-        <div class="form-group"><label>Estado inicial</label><select id="ml-estado" class="form-input"><option>Pendiente</option><option>Pagada</option></select></div>
+        <div class="form-group"><label>Provincia / Municipio</label><input id="ml-prov" class="form-input" placeholder="Ej: Madrid" value="${existingMulta?.provincia || ''}"></div>
+        <div class="form-group"><label>Estado inicial</label><select id="ml-estado" class="form-input">
+          <option ${existingMulta?.estado === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+          <option ${existingMulta?.estado === 'Pagada' ? 'selected' : ''}>Pagada</option>
+        </select></div>
       </div>
       <div class="form-group"><label>Hecho Denunciado *</label>
-        <textarea id="ml-hecho" class="form-input form-textarea" placeholder="Describe brevemente la infracción..."></textarea>
+        <textarea id="ml-hecho" class="form-input form-textarea" placeholder="Describe brevemente la infracción...">${existingMulta?.hecho || existingMulta?.motivo || ''}</textarea>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Importe Denuncia (€) *</label><input id="ml-imp" type="number" class="form-input" placeholder="100.00" step="0.01"></div>
-        <div class="form-group"><label>Fecha Límite (Pronto Pago)</label><input id="ml-flim" type="date" class="form-input"></div>
+        <div class="form-group"><label>Importe Denuncia (€) *</label><input id="ml-imp" type="number" class="form-input" placeholder="100.00" step="0.01" value="${existingMulta?.importe || ''}"></div>
+        <div class="form-group"><label>Fecha Límite (Pronto Pago)</label><input id="ml-flim" type="date" class="form-input" value="${existingMulta?.fechaLimite || ''}"></div>
       </div>
-      <div id="ml-pay-fields" style="display: none;">
+      <div id="ml-pay-fields" style="display: ${existingMulta?.estado === 'Pagada' ? 'block' : 'none'};">
         <div class="form-row bg-primary/5 p-3 rounded-lg border border-primary/20">
-          <div class="form-group"><label>Importe Pagado (€) *</label><input id="ml-imp-pag" type="number" class="form-input" placeholder="50.00" step="0.01"></div>
-          <div class="form-group"><label>Fecha de Pago *</label><input id="ml-fpag" type="date" class="form-input" value="${fmt.today()}"></div>
+          <div class="form-group"><label>Importe Pagado (€) *</label><input id="ml-imp-pag" type="number" class="form-input" placeholder="50.00" step="0.01" value="${existingMulta?.importePagado || ''}"></div>
+          <div class="form-group"><label>Fecha de Pago *</label><input id="ml-fpag" type="date" class="form-input" value="${existingMulta?.fechaPago || fmt.today()}"></div>
         </div>
       </div>
-      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-mul">Registrar Multa</button></div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-mul">${isEdit ? 'Guardar Cambios' : 'Registrar Multa'}</button></div>
     </div>`);
 
     const estSel = document.getElementById('ml-estado');
@@ -1425,10 +1437,25 @@ function renderMultas() {
         data.fechaPago = fPag;
       }
 
-      addMulta(data);
-      closeModal(); renderMultas(); renderAlertBanner(v.id); showToast('Sanción registrada correctamente');
+      if (isEdit) {
+        updateMulta(existingMulta.id, data);
+        showToast('Multa actualizada');
+      } else {
+        addMulta(data);
+        showToast('Sanción registrada correctamente');
+      }
+
+      closeModal(); renderMultas(); renderAlertBanner(v.id);
     };
   };
+
+  document.getElementById('btn-add-mul').onclick = () => showMultaModal();
+
+  c.querySelectorAll('[data-edit-mul]').forEach(b => b.onclick = () => {
+    const multaId = b.dataset.editMul;
+    const m = items.find(x => x.id === multaId);
+    if (m) showMultaModal(m);
+  });
 
   c.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => {
     const multaId = b.dataset.pay;
