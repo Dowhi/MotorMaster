@@ -1223,3 +1223,97 @@ body.workshop-mode .vehicle-hero {
     background: var(--clr-info-dim);
     color: var(--clr-info);
 }
+
+/* Notification Badge */
+.nav-item {
+    position: relative;
+}
+
+.notification-badge {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--clr-danger);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    box-shadow: 0 0 10px var(--clr-danger);
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        transform: translateY(-50%) scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+
+    70% {
+        transform: translateY(-50%) scale(1);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+
+    100% {
+        transform: translateY(-50%) scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+.alert-card {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
+    border-radius: 12px;
+    background: var(--clr-surface-2);
+    border: 1px solid var(--clr-border);
+    margin-bottom: 12px;
+    transition: all 0.2s;
+}
+
+.alert-card:hover {
+    border-color: var(--clr-accent);
+    transform: translateX(5px);
+}
+
+.alert-card-icon {
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.alert-card-content {
+    flex: 1;
+}
+
+.alert-card-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.alert-card-vehicle {
+    font-size: 0.7rem;
+    color: var(--clr-accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.alert-card-days {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+.alert-card.alert-danger {
+    border-left: 4px solid var(--clr-danger);
+}
+
+.alert-card.alert-warning {
+    border-left: 4px solid var(--clr-warning);
+}

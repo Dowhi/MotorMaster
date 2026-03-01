@@ -119,6 +119,7 @@ const ROUTES = {
   'seguro': renderSeguro,
   'multas': renderMultas,
   'otros': renderOtros,
+  'alerts': renderGlobalAlerts,
   'settings': renderSettings
 };
 function getRoute() { return (window.location.hash || '').replace('#/', '').replace('#', ''); }
@@ -169,6 +170,7 @@ function router() {
   renderUserProfile();
   renderVehicleSelector();
   renderAlertBanner(getActiveVehicle()?.id);
+  updateGlobalAlertBadge();
   fn();
 }
 
@@ -443,6 +445,34 @@ function renderDashboard() {
         </div>
       </div>
     </div>
+
+    ${(() => {
+      const allGlobal = collectAllGlobalAlerts();
+      const critical = allGlobal.filter(a => a.type === 'danger' || a.days <= 7).slice(0, 3);
+      if (!critical.length) return '';
+      return `
+      <div class="card" style="border: 1px solid var(--clr-danger-dim); margin-bottom: 20px; background: rgba(220, 38, 38, 0.05);">
+        <div style="padding: 10px 15px; border-bottom: 1px solid var(--clr-danger-dim); display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="color: var(--clr-danger); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin: 0;">⚠️ Atención Inmediata</h3>
+          <a href="#/alerts" style="font-size: 0.7rem; color: var(--clr-accent); font-weight: 700;">Ver todas (${allGlobal.length})</a>
+        </div>
+        <div style="padding: 10px;">
+          ${critical.map(a => `
+            <div style="display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="setActiveVehicle('${a.vehicleId}'); window.location.hash='#/'">
+              <span style="font-size: 1.2rem;">${a.days <= 0 ? '🚨' : '⚠️'}</span>
+              <div style="flex: 1;">
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 700; text-transform: uppercase;">${a.vehicleName}</div>
+                <div style="font-size: 0.85rem; font-weight: 600;">${a.message}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 0.75rem; font-weight: 800; color: ${a.days <= 0 ? 'var(--clr-danger)' : 'var(--clr-warning)'}">${a.days <= 0 ? 'VENCIDO' : `Faltan ${a.days}d`}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    })()}
 
     <div class="summary-grid">
       <div class="card summary-card"><div class="summary-icon">💸</div><div class="summary-data"><div class="summary-value">${fmt.currency(totalGastoYear)}</div><div class="summary-label">Gastos Año ${filterYear}</div></div></div>
@@ -1589,6 +1619,52 @@ function renderCalendar() {
   });
   html += `</div>`;
   c.innerHTML = html;
+}
+
+/* ======================== NOTIFICACIONES GLOBALES ======================== */
+function updateGlobalAlertBadge() {
+  const badge = document.getElementById('global-alert-count');
+  if (!badge) return;
+  const allAlerts = collectAllGlobalAlerts();
+  const count = allAlerts.length;
+  if (count > 0) {
+    badge.textContent = count;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function renderGlobalAlerts() {
+  const c = document.getElementById('main-content');
+  const alerts = collectAllGlobalAlerts();
+
+  c.innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Centro de Notificaciones</h1>
+        <p class="page-sub">Estado crítico de mantenimiento de toda la flota</p>
+      </div>
+    </div>
+
+    ${!alerts.length ? emptySection('🔔', 'No hay alertas pendientes. ¡Todo en orden!') : `
+      <div style="max-width: 800px; margin: 0 auto;">
+        ${alerts.map(a => `
+          <div class="alert-card alert-${a.type}" onclick="setActiveVehicle('${a.vehicleId}'); window.location.hash='#/'">
+            <div class="alert-card-icon">${a.days <= 0 ? '🚨' : '⚠️'}</div>
+            <div class="alert-card-content">
+              <div class="alert-card-vehicle">${a.vehicleName}</div>
+              <div class="alert-card-title">${a.message}</div>
+              <div class="alert-card-days">
+                ${a.days < 0 ? `Vencido hace ${Math.abs(a.days)} días` : a.days === 0 ? '¡VENCE HOY!' : `Vence en ${a.days} días`}
+              </div>
+            </div>
+            <div style="align-self:center; opacity:0.5">❯</div>
+          </div>
+        `).join('')}
+      </div>
+    `}
+  `;
 }
 
 /* ======================== CRONOLOGIA ======================== */

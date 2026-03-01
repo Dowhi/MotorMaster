@@ -51,6 +51,7 @@ function renderAlertBanner(vehicleId) {
       <span class="alert-msg"><strong>ALERTA DE PROXIMIDAD:</strong> ${a.message} — ${txt}</span>
     </div>`;
     }).join('');
+    if (typeof updateGlobalAlertBadge === 'function') updateGlobalAlertBadge();
 }
 
 function getVehicleHealth(vehicleId) {
@@ -58,4 +59,17 @@ function getVehicleHealth(vehicleId) {
     if (!alerts.length) return 'ok';
     if (alerts.some(a => a.type === 'danger' || a.days < 0)) return 'danger';
     return 'warn';
+}
+function collectAllGlobalAlerts() {
+    const { vehicles } = getState();
+    const allAlerts = [];
+    vehicles.forEach(v => {
+        const vehicleAlerts = collectAlerts(v.id).map(a => ({
+            ...a,
+            vehicleId: v.id,
+            vehicleName: `${v.icono || '🚗'} ${v.marca}`
+        }));
+        allAlerts.push(...vehicleAlerts);
+    });
+    return allAlerts.sort((a, b) => a.days - b.days);
 }
