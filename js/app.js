@@ -705,26 +705,38 @@ async function consultarDGT(vin) {
     }
 
     const year = parseInt(res['Model Year']) || new Date().getFullYear();
-    const fuel = res['Fuel Type - Primary'] || '';
+    const fuelPrimary = res['Fuel Type - Primary'] || '';
+    const fuelSecondary = res['Fuel Type - Secondary'] || '';
 
-    // Mapeo etiquetas DGT
+    // Lógica avanzada de detección de combustible (incluyendo Híbridos)
+    let fullFuel = fuelPrimary;
+    const fuelL = fuelPrimary.toLowerCase();
+    const fuelSL = fuelSecondary.toLowerCase();
+
+    if (fuelL.includes('electric') && fuelL.includes('gasoline')) fullFuel = 'Híbrido-Gasolina';
+    else if (fuelL.includes('electric') && fuelL.includes('diesel')) fullFuel = 'Híbrido-Diésel';
+    else if (fuelSL.includes('electric') || fuelL.includes('hybrid')) {
+      if (fuelL.includes('gasoline')) fullFuel = 'Híbrido-Gasolina';
+      else if (fuelL.includes('diesel')) fullFuel = 'Híbrido-Diésel';
+      else fullFuel = 'Híbrido';
+    }
+
+    // Mapeo etiquetas DGT España
     let label = '';
-    const fuelL = fuel.toLowerCase();
-    const currentYear = new Date().getFullYear();
+    const fuelFinalL = fullFuel.toLowerCase();
 
-    // IA Básica de etiquetado DGT España
-    if (fuelL.includes('electric') || fuelL.includes('battery')) label = '0';
-    else if (fuelL.includes('hybrid') || fuelL.includes('gas') || fuelL.includes('cng') || fuelL.includes('lpg')) label = 'ECO';
-    else if (year >= 2006 && !fuelL.includes('diesel')) label = 'C';
-    else if (year >= 2014 && fuelL.includes('diesel')) label = 'C';
-    else if (year >= 2000 && !fuelL.includes('diesel')) label = 'B';
-    else if (year >= 2006 && fuelL.includes('diesel')) label = 'B';
+    if (fuelFinalL.includes('electric') && !fuelFinalL.includes('gasoline') && !fuelFinalL.includes('diesel')) label = '0';
+    else if (fuelFinalL.includes('híbrido') || fuelFinalL.includes('gas') || fuelFinalL.includes('cng') || fuelFinalL.includes('lpg')) label = 'ECO';
+    else if (year >= 2006 && !fuelFinalL.includes('diésel')) label = 'C';
+    else if (year >= 2014 && fuelFinalL.includes('diésel')) label = 'C';
+    else if (year >= 2000 && !fuelFinalL.includes('diésel')) label = 'B';
+    else if (year >= 2006 && fuelFinalL.includes('diésel')) label = 'B';
 
     return {
       marca: res['Make'] || 'Desconocida',
       modelo: res['Model'] || 'Modelo base',
       año: year,
-      combustible: fuel.replace('Gasoline', 'Gasolina').replace('Diesel', 'Diésel'),
+      combustible: fullFuel.replace('Gasoline', 'Gasolina').replace('Diesel', 'Diésel'),
       cilindrada: res['Displacement (L)'] ? res['Displacement (L)'] + 'L' : (res['Displacement (CC)'] ? res['Displacement (CC)'] + 'cc' : ''),
       distintivo: label
     };
@@ -824,12 +836,14 @@ function renderGarage() {
     openModal('Nuevo Vehículo', `<div class="form">
       <!-- DGT Lookup Row -->
       <div class="bg-primary/5 p-3 rounded-lg border border-primary/20 mb-4">
-        <label class="text-[10px] font-black text-primary uppercase tracking-widest block mb-2">Consulta Automática DGT (Opcional)</label>
+        <label class="text-[10px] font-black text-primary uppercase tracking-widest block mb-2">Consulta Automática por Bastidor (VIN)</label>
         <div class="flex gap-2">
-          <input id="veh-bastidor" class="form-input flex-1" placeholder="Nº de Bastidor (VIN)...">
+          <input id="veh-bastidor" class="form-input flex-1" placeholder="Nº de Bastidor (17 caracteres)...">
           <button class="btn btn-primary btn-sm" id="btn-query-dgt">Consultar</button>
         </div>
-        <p class="text-[9px] text-slate-500 mt-2 italic">Prueba con: VSSZZZ6LZ (Seat), VF38BRHZY (Peugeot) o WBAJF1105 (BMW)</p>
+        <p class="text-[9px] text-slate-400 mt-2 italic px-1">
+          <span class="text-primary-400 font-bold">Nota:</span> El bastidor permite recuperar datos térmicos y de fábrica (Marca, Modelo, Año, Motor). La <span class="text-white">Matrícula</span> y <span class="text-white">Fecha de Matriculación</span> son datos de registro nacional y deben introducirse manualmente.
+        </p>
       </div>
 
       <div class="form-row">
