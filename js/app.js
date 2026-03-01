@@ -1352,12 +1352,14 @@ function renderMultas() {
           <small>${m.estado === 'Pagada' ? `Pagada el: ${fmt.date(m.fechaPago)}` : `Límite: ${fmt.date(m.fechaLimite)} ${daysBadge(m.fechaLimite)}`}</small>
         </td>
         <td data-label="Acción">
-          <div class="flex gap-1">
-            <button class="btn btn-secondary btn-xs" data-edit-mul="${m.id}" title="Editar multa">✏️</button>
-            ${m.estado === 'Pendiente' ? `<button class="btn btn-primary btn-xs" data-pay="${m.id}">✓ Pagar</button>` : '—'}
+          ${m.estado === 'Pendiente' ? `<button class="btn btn-primary btn-xs" data-pay="${m.id}">✓ Pagar</button>` : '—'}
+        </td>
+        <td class="text-right">
+          <div class="flex gap-1 justify-end">
+            <button class="btn btn-ghost btn-xs" data-edit-mul="${m.id}" title="Editar multa" style="border:1px solid var(--clr-border)">✏️</button>
+            <button class="btn btn-danger btn-xs" data-delete="multas" data-id="${m.id}">✕</button>
           </div>
         </td>
-        <td><button class="btn btn-danger btn-xs" data-delete="multas" data-id="${m.id}">✕</button></td>
       </tr>`;
   }).join('')}</tbody>
     </table></div>
