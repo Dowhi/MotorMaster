@@ -217,14 +217,21 @@ function getSeguroByVehicle(vid) { return _state.seguro.filter(s => s.vehicleId 
 function addMulta(data) {
   const m = { ...data, id: generateId('MUL'), vehicleId: _state.activeVehicleId };
   _state.multas.push(m);
-  if (data.estado === 'Pagada') addGasto(_state.activeVehicleId, data.importe);
+  if (data.estado === 'Pagada') {
+    addGasto(_state.activeVehicleId, data.importePagado || data.importe);
+  }
   saveState(); return m;
 }
-function updateMultaEstado(id, estado) {
+function updateMultaEstado(id, estado, importePagado, fechaPago) {
   const m = _state.multas.find(m => m.id === id);
   if (!m) return;
-  if (m.estado !== 'Pagada' && estado === 'Pagada') addGasto(m.vehicleId, m.importe);
-  m.estado = estado; saveState();
+  if (m.estado !== 'Pagada' && estado === 'Pagada') {
+    m.importePagado = importePagado || m.importe;
+    m.fechaPago = fechaPago || new Date().toISOString().split('T')[0];
+    addGasto(m.vehicleId, m.importePagado);
+  }
+  m.estado = estado;
+  saveState();
 }
 function getMultasByVehicle(vid) { return _state.multas.filter(m => m.vehicleId === vid); }
 
