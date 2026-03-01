@@ -663,24 +663,29 @@ body.retro-mode .sidebar {
 }
 
 .form-input {
-    background: #0F172A;
-    border: 1px solid var(--clr-border);
-    padding: 12px;
-    border-radius: 8px;
-    color: #F8FAFC;
-    font-family: inherit;
-    font-size: 1rem;
-    width: 100%;
+    background: #0F172A !important;
+    border: 1px solid var(--clr-border) !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    color: #FFFFFF !important;
+    font-family: inherit !important;
+    font-size: 1rem !important;
+    width: 100% !important;
 }
 
 .form-input::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.4) !important;
 }
 
 .form-input:focus {
-    border-color: var(--clr-accent);
-    outline: none;
-    background: #131d2e;
+    border-color: var(--clr-accent) !important;
+    outline: none !important;
+    background: #1e293b !important;
+}
+
+select.form-input option {
+    background: #0F172A;
+    color: white;
 }
 
 .form-actions {

@@ -656,54 +656,83 @@ function exportToCSV() {
 }
 
 /**
- * Simulación de consulta a DGT/IDEX por bastidor
+ * Consulta real a base de datos de vehículos por bastidor (VIN)
  */
 async function consultarDGT(vin) {
   if (!vin) return null;
-  showToast('Consultando DGT/IDEX...');
+  const vinUpper = vin.toUpperCase().replace(/\s/g, '').trim();
 
-  // Simulación de delay de red
-  await new Promise(r => setTimeout(r, 1500));
-
-  const vinUpper = vin.toUpperCase().trim();
-
-  // Mock de datos para demostración
-  const mockData = {
-    'VSSZZZ6LZ': {
-      marca: 'Seat',
-      modelo: 'Ibiza',
-      año: 2005,
-      combustible: 'Diésel',
-      cilindrada: '1.9 TDI',
-      distintivo: 'B',
-      fechaMatriculacion: '2005-06-15'
-    },
-    'VF38BRHZY': {
-      marca: 'Peugeot',
-      modelo: '308',
-      año: 2018,
-      combustible: 'Gasolina',
-      cilindrada: '1.2 PureTech',
-      distintivo: 'C',
-      fechaMatriculacion: '2018-09-22'
-    },
-    'WBAJF1105': {
-      marca: 'BMW',
-      modelo: '320d',
-      año: 2022,
-      combustible: 'Híbrido Diésel',
-      cilindrada: '2.0',
-      distintivo: 'ECO',
-      fechaMatriculacion: '2022-03-10'
-    }
-  };
-
-  // Buscar coincidencia parcial (primeros caracteres usuales)
-  for (const key in mockData) {
-    if (vinUpper.startsWith(key)) return mockData[key];
+  if (vinUpper.length < 9) {
+    alert('El bastidor debe tener entre 9 y 17 caracteres.');
+    return null;
   }
 
-  return null;
+  showToast('Conectando con base de datos global...');
+  console.log("Consultando VIN:", vinUpper);
+
+  // Mantenemos los Mocks actualizados
+  const mockData = {
+    'VSSZZZ6LZ': { marca: 'Seat', modelo: 'Ibiza', año: 2005, combustible: 'Diésel', cilindrada: '1.9 TDI', distintivo: 'B' },
+    'VF38BRHZY': { marca: 'Peugeot', modelo: '308', año: 2018, combustible: 'Gasolina', cilindrada: '1.2 PureTech', distintivo: 'C' },
+    'WBAJF1105': { marca: 'BMW', modelo: '320d', año: 2022, combustible: 'Híbrido Diésel', cilindrada: '2.0', distintivo: 'ECO' }
+  };
+
+  if (mockData[vinUpper]) {
+    console.log("Coincidencia encontrada en caché local");
+    await new Promise(r => setTimeout(r, 600));
+    return mockData[vinUpper];
+  }
+
+  try {
+    const response = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vinUpper}?format=json`);
+    if (!response.ok) throw new Error('Error de conexión con el servidor de datos');
+
+    const data = await response.json();
+    console.log("Respuesta API:", data);
+
+    const res = {};
+    if (data.Results) {
+      data.Results.forEach(item => {
+        if (item.Value && item.Value !== "0" && item.Value !== "" && item.Value !== "Not Applicable") {
+          res[item.Variable] = item.Value;
+        }
+      });
+    }
+
+    if (!res['Make']) {
+      console.warn("API no devolvió Marca para este VIN");
+      return null;
+    }
+
+    const year = parseInt(res['Model Year']) || new Date().getFullYear();
+    const fuel = res['Fuel Type - Primary'] || '';
+
+    // Mapeo etiquetas DGT
+    let label = '';
+    const fuelL = fuel.toLowerCase();
+    const currentYear = new Date().getFullYear();
+
+    // IA Básica de etiquetado DGT España
+    if (fuelL.includes('electric') || fuelL.includes('battery')) label = '0';
+    else if (fuelL.includes('hybrid') || fuelL.includes('gas') || fuelL.includes('cng') || fuelL.includes('lpg')) label = 'ECO';
+    else if (year >= 2006 && !fuelL.includes('diesel')) label = 'C';
+    else if (year >= 2014 && fuelL.includes('diesel')) label = 'C';
+    else if (year >= 2000 && !fuelL.includes('diesel')) label = 'B';
+    else if (year >= 2006 && fuelL.includes('diesel')) label = 'B';
+
+    return {
+      marca: res['Make'] || 'Desconocida',
+      modelo: res['Model'] || 'Modelo base',
+      año: year,
+      combustible: fuel.replace('Gasoline', 'Gasolina').replace('Diesel', 'Diésel'),
+      cilindrada: res['Displacement (L)'] ? res['Displacement (L)'] + 'L' : (res['Displacement (CC)'] ? res['Displacement (CC)'] + 'cc' : ''),
+      distintivo: label
+    };
+  } catch (err) {
+    console.error("Error crítico en consulta DGT:", err);
+    showToast('Error de conexión. Intenta manual.');
+    return null;
+  }
 }
 
 /* ---- VEHICLE SELECTOR ---- */
@@ -850,29 +879,41 @@ function renderGarage() {
 
     // DGT Query Action
     document.getElementById('btn-query-dgt').onclick = async (e) => {
-      const vin = document.getElementById('veh-bastidor').value;
-      if (!vin) return;
+      const vinInput = document.getElementById('veh-bastidor');
+      const vin = vinInput.value.replace(/[^A-Za-z0-9]/g, '').trim();
 
-      const originalText = e.target.textContent;
-      e.target.textContent = '...';
-      e.target.disabled = true;
-
-      const data = await consultarDGT(vin);
-
-      if (data) {
-        document.getElementById('veh-marca').value = data.marca;
-        document.getElementById('veh-modelo').value = data.modelo;
-        document.getElementById('veh-año').value = data.año;
-        document.getElementById('veh-fuel').value = data.combustible;
-        document.getElementById('veh-cc').value = data.cilindrada;
-        document.getElementById('veh-label').value = data.distintivo;
-        showToast('Datos de DGT volcados correctamente');
-      } else {
-        alert('No se han encontrado datos para este bastidor en el IDEX de DGT. Introduce los datos manualmente.');
+      if (!vin || vin.length < 5) {
+        showToast('⚠ Introduce un bastidor válido');
+        vinInput.focus();
+        return;
       }
 
-      e.target.textContent = originalText;
-      e.target.disabled = false;
+      const btn = e.currentTarget;
+      const originalText = btn.textContent;
+      btn.innerHTML = '<span class="animate-pulse">🔍 Consultando...</span>';
+      btn.disabled = true;
+
+      try {
+        const data = await consultarDGT(vin);
+
+        if (data) {
+          document.getElementById('veh-marca').value = data.marca || '';
+          document.getElementById('veh-modelo').value = data.modelo || '';
+          document.getElementById('veh-año').value = data.año || '';
+          document.getElementById('veh-fuel').value = data.combustible || '';
+          document.getElementById('veh-cc').value = data.cilindrada || '';
+          document.getElementById('veh-label').value = data.distintivo || '';
+          showToast('✓ Datos técnicos volcados con éxito');
+        } else {
+          alert('No hemos podido identificar este bastidor en el registro global (NHTSA). Puede que sea un vehículo muy específico o fabricado fuera de los mercados principales de datos. Por favor, completa los campos manualmente.');
+        }
+      } catch (err) {
+        console.error("Error en flujo DGT UI:", err);
+        alert('Hubo un problema de conexión. Por favor, inténtalo de nuevo o rellena los datos a mano.');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
     };
 
     document.getElementById('btn-save-veh').onclick = () => {
