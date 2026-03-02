@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motormaster-v9.3';
+const CACHE_NAME = 'motormaster-v9.4';
 const ASSETS = [
     './',
     './index.html',

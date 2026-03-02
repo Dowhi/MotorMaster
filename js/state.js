@@ -246,6 +246,15 @@ function addITV(data) {
   saveState(); return i;
 }
 function getITVByVehicle(vid) { return _state.itv.filter(i => i.vehicleId === vid); }
+function updateITV(id, data) {
+  const idx = _state.itv.findIndex(i => i.id === id);
+  if (idx === -1) return;
+  const old = _state.itv[idx];
+  const v = _state.vehicles.find(v => v.id === old.vehicleId);
+  if (v) v.gastoTotal = (parseFloat(v.gastoTotal) || 0) - (parseFloat(old.coste) || 0) + (parseFloat(data.coste) || 0);
+  _state.itv[idx] = { ...old, ...data };
+  saveState();
+}
 
 /* ---- SEGURO ---- */
 function addSeguro(data) {

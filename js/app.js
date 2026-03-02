@@ -459,6 +459,7 @@ function openSaleReport(vid) {
   const v = getState().vehicles.find(v => v.id === vid);
   const revs = getRevisionesByVehicle(vid);
   const aves = getAveriasByVehicle(vid);
+  const recs = getRecambiosByVehicle(vid);
   const html = `
     <div style="padding:40px; font-family:var(--font-body); color: #fff;">
       <h1 class="page-title" style="color:var(--clr-accent)">MotorMaster — Certificado de Historial</h1>
@@ -475,8 +476,13 @@ function openSaleReport(vid) {
       </table>
       <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Reparaciones</h3>
       <table class="report-table" style="width:100%; border-collapse: collapse;">
-        <thead><tr><th>Fecha</th><th>Avería/Síntoma</th><th>Solución</th></tr></thead>
-        <tbody>${aves.length ? aves.map(a => `<tr><td>${fmt.date(a.fecha)}</td><td>${a.sintomas}</td><td>${a.solucion}</td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
+        <thead><tr><th>Fecha</th><th>Avería/Síntoma</th><th>Solución</th><th>Coste</th></tr></thead>
+        <tbody>${aves.length ? aves.map(a => `<tr><td>${fmt.date(a.fecha)}</td><td>${a.sintomas}</td><td>${a.solucion || '—'}</td><td>${fmt.currency(a.coste)}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
+      </table>
+      <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Recambios</h3>
+      <table class="report-table" style="width:100%; border-collapse: collapse;">
+        <thead><tr><th>Pieza / Artículo</th><th>Marca / Ref / Factura</th><th>Tienda</th><th>Coste</th></tr></thead>
+        <tbody>${recs.length ? recs.map(r => `<tr><td>${r.nombre}</td><td>${r.marca || ''} ${r.referencia || ''} ${r.factura ? `<br><small>Fact: ${r.factura}</small>` : ''}</td><td>${r.tienda || ''}</td><td>${fmt.currency(r.precio)}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
       <p style="margin-top:40px; font-size:0.8rem; text-align:center; opacity: 0.7;">Informe generado por MotorMaster — Valor de mercado incrementado por transparencia técnica.</p>
     </div>
@@ -1606,54 +1612,88 @@ function openRecambioModal(id = null, rerender) {
 function renderITV() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('ITV'); return; }
-  const items = getITVByVehicle(v.id);
+  const items = getITVByVehicle(v.id).sort((a, b) => b.fechaInspeccion > a.fechaInspeccion ? 1 : -1);
   c.innerHTML = `
     <div class="page-header"><div><h1 class="page-title">ITV</h1><p class="page-sub">Inspección Técnica de Vehículos</p></div>
       <button class="btn btn-primary" id="btn-add-itv">+ Registrar ITV</button></div>
     ${!items.length ? emptySection('🔍', 'Sin registros de ITV') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>ID</th><th>Fecha Inspección</th><th>Resultado</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Fecha Insp.</th><th>Estación</th><th>Resultado</th><th>Factura / Importe</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
       <tbody>${items.map(i => `<tr>
-        <td data-label="ID"><code class="id-code">${i.id}</code></td>
-        <td data-label="Fecha Insp.">${fmt.date(i.fechaInspeccion)}</td>
-        <td data-label="Resultado">${stateBadge(i.resultado)}</td>
+        <td data-label="Fecha Insp."><strong>${fmt.date(i.fechaInspeccion)}</strong></td>
+        <td data-label="Estación">${i.estacion || '—'}</td>
+        <td data-label="Resultado">${stateBadge(i.resultado)}${i.causa ? `<br><small class="text-danger italic">${i.causa}</small>` : ''}</td>
+        <td data-label="Importe">
+          ${i.factura ? `<small class="text-muted">Fact: ${i.factura}</small><br>` : ''}
+          <span class="gasto">${fmt.currency(i.coste || 0)}</span>
+        </td>
         <td data-label="Vencimiento">${fmt.date(i.fechaVencimiento)}</td>
-        <td data-label="Estado">${daysBadge(i.fechaVencimiento)}</td>
-        <td><button class="btn btn-danger btn-xs" data-delete="itv" data-id="${i.id}">✕</button></td>
+        <td class="text-right" style="white-space:nowrap">
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-secondary btn-xs" data-edit-itv="${i.id}" title="Editar">✎</button>
+            <button class="btn btn-danger btn-xs" data-delete="itv" data-id="${i.id}">✕</button>
+          </div>
+        </td>
       </tr>`).join('')}</tbody>
     </table></div>`}`;
-  document.getElementById('btn-add-itv').onclick = () => {
-    openModal('Registrar ITV', `<div class="form">
-      <div class="form-row">
-        <div class="form-group"><label>Fecha de inspección *</label><input id="itv-fecha" type="date" class="form-input" value="${fmt.today()}"></div>
-        <div class="form-group"><label>Resultado *</label><select id="itv-res" class="form-input"><option>Apto</option><option>Apto con Defectos</option><option>No Apto</option></select></div>
-      </div>
-      <div class="form-group"><label>Fecha de vencimiento *</label><input id="itv-venc" type="date" class="form-input"></div>
-      <div class="form-group"><label>Notas (centro, nº expediente...)</label><textarea id="itv-notas" class="form-input form-textarea" placeholder="Opcional"></textarea></div>
-      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-itv">Registrar</button></div>
-    </div>`);
-    document.getElementById('btn-save-itv').onclick = () => {
-      const fecha = document.getElementById('itv-fecha').value;
-      const venc = document.getElementById('itv-venc').value;
-      const res = document.getElementById('itv-res').value;
-      if (!fecha || !venc) { alert('Completa los campos obligatorios (*)'); return; }
 
-      addITV({ fechaInspeccion: fecha, resultado: res, fechaVencimiento: venc, notas: document.getElementById('itv-notas').value.trim() });
-
-      // Si el resultado es favorable, actualizar el vehículo
-      if (res === 'Apto' || res === 'Apto con Defectos') {
-        const s = getState();
-        const vehicle = s.vehicles.find(veh => veh.id === v.id);
-        if (vehicle) {
-          vehicle.ultimaITV = fecha;
-          saveState();
-        }
-      }
-
-      closeModal(); renderITV(); renderAlertBanner(v.id); showToast('ITV registrada correctamente');
-    };
-  };
+  document.getElementById('btn-add-itv').onclick = () => openITVModal();
+  c.querySelectorAll('[data-edit-itv]').forEach(b => b.onclick = () => openITVModal(b.dataset.editItv));
   setupDeleteBtns(renderITV);
+}
+
+function openITVModal(id = null) {
+  const v = getActiveVehicle();
+  const isEdit = id !== null;
+  const data = isEdit ? getState().itv.find(i => i.id === id) : null;
+
+  openModal(isEdit ? 'Editar ITV' : 'Registrar ITV', `<div class="form">
+    <div class="form-row">
+      <div class="form-group"><label>Fecha de inspección *</label><input id="itv-fecha" type="date" class="form-input" value="${data ? data.fechaInspeccion : fmt.today()}"></div>
+      <div class="form-group"><label>Resultado *</label><select id="itv-res" class="form-input">
+        <option ${data && data.resultado === 'Apto' ? 'selected' : ''}>Apto</option>
+        <option ${data && data.resultado === 'Apto con Defectos' ? 'selected' : ''}>Apto con Defectos</option>
+        <option ${data && data.resultado === 'No Apto' ? 'selected' : ''}>No Apto</option>
+      </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Estación ITV</label><input id="itv-est" class="form-input" placeholder="Nombre centro ITV" value="${data ? (data.estacion || '') : ''}"></div>
+      <div class="form-group"><label>Importe (€)</label><input id="itv-coste" type="number" class="form-input" placeholder="0,00" step="0.01" value="${data ? data.coste : ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Nº Factura</label><input id="itv-fact" class="form-input" placeholder="Nº Factura..." value="${data ? (data.factura || '') : ''}"></div>
+      <div class="form-group"><label>Causa Desfavorable (si aplica)</label><input id="itv-causa" class="form-input" placeholder="Motivo del rechazo" value="${data ? (data.causa || '') : ''}"></div>
+    </div>
+    <div class="form-group"><label>Fecha de vencimiento *</label><input id="itv-venc" type="date" class="form-input" value="${data ? data.fechaVencimiento : ''}"></div>
+    <div class="form-group"><label>Notas adicionales</label><textarea id="itv-notas" class="form-input form-textarea" placeholder="Opcional">${data ? (data.notas || '') : ''}</textarea></div>
+    <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-itv">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
+  </div>`);
+
+  document.getElementById('btn-save-itv').onclick = () => {
+    const fields = {
+      fechaInspeccion: document.getElementById('itv-fecha').value,
+      resultado: document.getElementById('itv-res').value,
+      estacion: document.getElementById('itv-est').value.trim(),
+      coste: parseFloat(document.getElementById('itv-coste').value) || 0,
+      factura: document.getElementById('itv-fact').value.trim(),
+      causa: document.getElementById('itv-causa').value.trim(),
+      fechaVencimiento: document.getElementById('itv-venc').value,
+      notas: document.getElementById('itv-notas').value.trim()
+    };
+    if (!fields.fechaInspeccion || !fields.fechaVencimiento) { alert('Completa los campos obligatorios (*)'); return; }
+
+    if (isEdit) updateITV(id, fields);
+    else addITV(fields);
+
+    // Actualizar vehículo si es favorable
+    if (fields.resultado !== 'No Apto') {
+      const s = getState();
+      const veh = s.vehicles.find(x => x.id === v.id);
+      if (veh) { veh.ultimaITV = fields.fechaInspeccion; saveState(); }
+    }
+
+    closeModal(); renderITV(); renderAlertBanner(v.id); showToast(isEdit ? 'Registro de ITV actualizado' : 'ITV registrada correctamente');
+  };
 }
 
 /* ======================== SEGURO ======================== */
