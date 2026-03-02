@@ -13,6 +13,16 @@ firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// Habilitar persistencia offline
+db.enablePersistence().catch(err => {
+    if (err.code == 'failed-precondition') {
+        console.warn("Persistencia fallida: Múltiples pestañas abiertas");
+    } else if (err.code == 'unimplemented') {
+        console.warn("Persistencia no soportada por el navegador");
+    }
+});
+
 const storage = firebase.storage();
 
 // Auth helper

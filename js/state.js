@@ -45,6 +45,7 @@ function loadState() {
 let _state = loadState();
 let _currentUser = null;
 let _syncTimeout = null;
+let _isLoadedFromCloud = false; // Flag para evitar sobrescribir datos antes de cargar
 
 // Firebase Auth listener
 firebase.auth().onAuthStateChanged(user => {
@@ -55,6 +56,7 @@ firebase.auth().onAuthStateChanged(user => {
   } else {
     console.log("Modo local (Sin usuario)");
     _state = loadState();
+    _isLoadedFromCloud = false;
   }
   // Forzar refresco de la UI tras cambio de auth
   if (typeof router === 'function') router();
@@ -68,20 +70,27 @@ async function loadFromFirestore() {
       const remoteData = doc.data();
       // Mezclar datos locales con remotos (preferencia a remotos)
       _state = { ..._state, ...remoteData };
-      saveState(false); // Solo local para actualizar caché
-      if (typeof router === 'function') router();
+      console.log("Datos cargados desde la nube");
     } else {
-      // Si no hay datos en la nube, subir el estado local actual
-      await saveToFirestore();
-      if (typeof router === 'function') router();
+      console.log("No hay datos en la nube, usando locales");
     }
+
+    _isLoadedFromCloud = true; // Decimos que ya "sabemos" lo que hay (o no hay)
+
+    if (!doc.exists) {
+      console.log("No hay datos en la nube, subiendo los locales actuales...");
+      await saveToFirestore();
+    }
+
+    saveState(false); // Solo local para actualizar caché
+    if (typeof router === 'function') router();
   } catch (err) {
     console.error("Error al cargar de Firestore:", err);
   }
 }
 
 async function saveToFirestore() {
-  if (!_currentUser) return;
+  if (!_currentUser || !_isLoadedFromCloud) return;
   try {
     await firebase.firestore().collection('users').doc(_currentUser.uid).set(_state);
     console.log("Nube actualizada");

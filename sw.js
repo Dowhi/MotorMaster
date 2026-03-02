@@ -1,10 +1,11 @@
-const CACHE_NAME = 'motormaster-v3';
+const CACHE_NAME = 'motormaster-v4';
 const ASSETS = [
     './',
     './index.html',
     './css/tokens.css',
     './css/reset.css',
     './css/app.css',
+    './js/firebase-config.js',
     './js/state.js',
     './js/alerts.js',
     './js/notifications.js',
