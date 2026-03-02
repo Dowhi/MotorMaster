@@ -471,18 +471,20 @@ function openSaleReport(vid) {
       </div>
       <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Mantenimiento Preventivo</h3>
       <table class="report-table" style="width:100%; border-collapse: collapse; margin-bottom: 25px;">
-        <thead><tr><th>Fecha</th><th>Operación</th><th>KM</th><th>Taller / Comercio</th></tr></thead>
-        <tbody>${revs.length ? revs.map(r => `<tr><td>${fmt.date(r.fecha)}</td><td>${r.operacion}</td><td>${fmt.km(r.km)}</td><td>${r.taller || '—'}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
+        <thead><tr><th>FECHA</th><th>OPERACION</th><th>TALLER/COMERCIO</th><th>KMS</th><th>COSTE</th></tr></thead>
+        <tbody>${revs.length ? revs.sort((a, b) => b.fecha.localeCompare(a.fecha)).map(r => `<tr><td>${fmt.date(r.fecha)}</td><td>${r.operacion}</td><td>${r.taller || '—'}</td><td>${fmt.km(r.km)}</td><td>${fmt.currency(r.coste)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
+
       <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Reparaciones</h3>
-      <table class="report-table" style="width:100%; border-collapse: collapse;">
-        <thead><tr><th>Fecha</th><th>Avería/Síntoma</th><th>Solución</th><th>Coste</th></tr></thead>
-        <tbody>${aves.length ? aves.map(a => `<tr><td>${fmt.date(a.fecha)}</td><td>${a.sintomas}</td><td>${a.solucion || '—'}</td><td>${fmt.currency(a.coste)}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
+      <table class="report-table" style="width:100%; border-collapse: collapse; margin-bottom: 25px;">
+        <thead><tr><th>FECHA</th><th>AVERÍA/SÍNTOMA</th><th>TALLER/COMERCIO</th><th>KMS</th><th>COSTE</th></tr></thead>
+        <tbody>${aves.length ? aves.sort((a, b) => b.fecha.localeCompare(a.fecha)).map(a => `<tr><td>${fmt.date(a.fecha)}</td><td>${a.sintomas}</td><td>${a.taller || '—'}</td><td>${fmt.km(a.km || 0)}</td><td>${fmt.currency(a.coste)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
+
       <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Recambios</h3>
       <table class="report-table" style="width:100%; border-collapse: collapse;">
-        <thead><tr><th>Pieza / Artículo</th><th>Marca / Ref / Factura</th><th>Tienda</th><th>Coste</th></tr></thead>
-        <tbody>${recs.length ? recs.map(r => `<tr><td>${r.nombre}</td><td>${r.marca || ''} ${r.referencia || ''} ${r.factura ? `<br><small>Fact: ${r.factura}</small>` : ''}</td><td>${r.tienda || ''}</td><td>${fmt.currency(r.precio)}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
+        <thead><tr><th>FECHA</th><th>PIEZA/ARTÍCULO</th><th>TIENDA</th><th>KMS</th><th>COSTE</th></tr></thead>
+        <tbody>${recs.length ? recs.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).map(r => `<tr><td>${fmt.date(r.fecha || '')}</td><td>${r.nombre}${r.marca || r.referencia ? `<br><small style="opacity:0.7">${r.marca || ''} ${r.referencia || ''}</small>` : ''}</td><td>${r.tienda || '—'}</td><td>${fmt.km(r.km || 0)}</td><td>${fmt.currency(r.precio)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
       <p style="margin-top:40px; font-size:0.8rem; text-align:center; opacity: 0.7;">Informe generado por MotorMaster — Valor de mercado incrementado por transparencia técnica.</p>
     </div>
@@ -1389,6 +1391,10 @@ function openAveriaModal(id = null, rerender) {
         <option ${data && data.prioridad === 'Media' ? 'selected' : ''}>Media</option>
         <option ${data && data.prioridad === 'Alta' ? 'selected' : ''}>Alta</option>
       </select></div>
+      <div class="form-group"><label>KM actuales del vehículo *</label><input id="af-km" type="number" class="form-input" value="${data ? (data.km || 0) : v.km}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Taller / Comercio</label><input id="af-taller" class="form-input" placeholder="Nombre del taller" value="${data ? (data.taller || '') : ''}"></div>
       <div class="form-group"><label>Coste Final (€)</label><input id="af-coste" type="number" class="form-input" value="${data ? data.coste : ''}" readonly></div>
     </div>
     <div class="form-row">
@@ -1439,6 +1445,7 @@ function openAveriaModal(id = null, rerender) {
       sintomas: document.getElementById('af-sint').value.trim(),
       fecha: document.getElementById('af-fecha').value,
       coste: parseFloat(document.getElementById('af-coste').value),
+      km: parseFloat(document.getElementById('af-km').value),
       diagnostico: document.getElementById('af-diag').value.trim(),
       solucion: document.getElementById('af-sol').value.trim(),
       prioridad: document.getElementById('af-pri').value,
@@ -1452,6 +1459,8 @@ function openAveriaModal(id = null, rerender) {
 
     if (isEdit) updateAveria(id, fields);
     else addAveria(fields);
+
+    updateVehicleKm(v.id, fields.km);
 
     closeModal(); rerender(); showToast(isEdit ? 'Avería actualizada' : 'Avería registrada');
   };
@@ -1540,6 +1549,10 @@ function openRecambioModal(id = null, rerender) {
   openModal(isEdit ? 'Editar Recambio' : 'Nuevo Recambio / Factura', `<div class="form">
     <div class="form-row">
       <div class="form-group"><label>Tienda / Proveedor *</label><input id="rr-tienda" class="form-input" placeholder="Ej: Amazon, Oscaro, Taller Pepe" value="${data ? data.tienda : ''}"></div>
+      <div class="form-group"><label>Fecha *</label><input id="rr-fecha" type="date" class="form-input" value="${data ? data.fecha : fmt.today()}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>KM actuales *</label><input id="rr-km" type="number" class="form-input" value="${data ? (data.km || 0) : v.km}"></div>
       <div class="form-group"><label>Coste Final (€)</label><input id="rr-precio" type="number" class="form-input" value="${data ? data.precio : ''}" readonly></div>
     </div>
     <div class="form-row">
@@ -1584,6 +1597,8 @@ function openRecambioModal(id = null, rerender) {
   document.getElementById('btn-save-rec').onclick = () => {
     const tienda = document.getElementById('rr-tienda').value.trim();
     const precio = parseFloat(document.getElementById('rr-precio').value);
+    const fecha = document.getElementById('rr-fecha').value;
+    const km = parseFloat(document.getElementById('rr-km').value);
     const lv = document.getElementById('rr-link').value;
     const linkedTo = lv ? { type: lv.split('|')[0], id: lv.split('|')[1] } : null;
     const factura = document.getElementById('rr-fact').value.trim();
@@ -1593,17 +1608,17 @@ function openRecambioModal(id = null, rerender) {
 
     if (!tienda || isNaN(precio)) { alert('Completa la tienda y los importes'); return; }
 
-    const fields = { nombre: data ? data.nombre : 'Recambio editado', referencia: data ? data.referencia : '', tienda, precio, linkedTo, factura, formaPago, ivaIncluido, conceptos };
+    const fields = { nombre: data ? data.nombre : 'Recambio editado', referencia: data ? data.referencia : '', tienda, precio, fecha, km, linkedTo, factura, formaPago, ivaIncluido, conceptos };
 
-    // Si es edición de recambio, lo simplificamos a actualizar el objeto
     if (isEdit) updateRecambio(id, fields);
     else {
       // Si es nuevo, usamos la lógica de múltiples filas del invoice
       conceptos.forEach(item => {
-        addRecambio({ nombre: item.desc, referencia: item.ref, tienda, precio: item.qty * item.price * (1 - item.dto / 100), linkedTo, factura, formaPago, conceptos: [item] });
+        addRecambio({ nombre: item.desc, referencia: item.ref, tienda, precio: item.qty * item.price * (1 - item.dto / 100), fecha, km, linkedTo, factura, formaPago, conceptos: [item] });
       });
     }
 
+    updateVehicleKm(v.id, fields.km);
     closeModal(); rerender(); showToast(isEdit ? 'Recambio actualizado' : 'Recambios registrados');
   };
 }
