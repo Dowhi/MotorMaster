@@ -1162,7 +1162,7 @@ function renderRevisiones() {
         <td data-label="ID"><code class="id-code">${r.id}</code></td>
         <td data-label="Fecha">${fmt.date(r.fecha)}</td>
         <td data-label="Prioridad">${priorityBadge(r.prioridad)}</td>
-        <td data-label="Operación"><strong>${r.operacion}</strong>${r.notas ? `<br><small class="text-muted">${r.notas}</small>` : ''}</td>
+        <td data-label="Operación"><strong>${r.operacion}</strong><br><small class="text-muted">${r.taller || ''} ${r.factura ? `| Fact: ${r.factura}` : ''}</small>${r.notas ? `<br><small class="text-muted">${r.notas}</small>` : ''}</td>
         <td data-label="Km">${fmt.km(r.km)}</td>
         <td data-label="Coste" class="gasto">${fmt.currency(r.coste)}</td>
         <td data-label="Próxima">${fmt.date(r.proximaFecha)}</td>
@@ -1188,6 +1188,18 @@ function renderRevisiones() {
       <div class="form-row">
         <div class="form-group"><label>Próxima Revisión (Fecha)</label><input id="rf-prox-f" type="date" class="form-input"></div>
         <div class="form-group"><label>Coste Final (€)</label><input id="rf-coste" type="number" class="form-input" readonly></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Taller / Comercio</label><input id="rf-taller" class="form-input" placeholder="Nombre del taller"></div>
+        <div class="form-group"><label>Nº Factura</label><input id="rf-fact" class="form-input" placeholder="Ref. factura"></div>
+      </div>
+      <div class="form-group"><label>Forma de Pago</label>
+        <select id="rf-pago" class="form-input">
+          <option value="Tarjeta">Tarjeta</option>
+          <option value="Efectivo">Efectivo</option>
+          <option value="Transferencia">Transferencia</option>
+          <option value="Bizum">Bizum</option>
+        </select>
       </div>
       
       <!-- Invoice concepts -->
@@ -1216,7 +1228,18 @@ function renderRevisiones() {
       const coste = document.getElementById('rf-coste').value;
       if (!fecha || !oper || coste === '') { alert('Completa los campos obligatorios (*)'); return; }
       const km = document.getElementById('rf-km').value;
-      addRevision({ operacion: oper, km: parseFloat(km), fecha, coste: parseFloat(coste), proximaFecha: document.getElementById('rf-prox-f').value, prioridad: document.getElementById('rf-pri').value, notas: document.getElementById('rf-notas').value.trim() });
+      addRevision({
+        operacion: oper,
+        km: parseFloat(km),
+        fecha,
+        coste: parseFloat(coste),
+        proximaFecha: document.getElementById('rf-prox-f').value,
+        prioridad: document.getElementById('rf-pri').value,
+        notas: document.getElementById('rf-notas').value.trim(),
+        taller: document.getElementById('rf-taller').value.trim(),
+        factura: document.getElementById('rf-fact').value.trim(),
+        formaPago: document.getElementById('rf-pago').value
+      });
       updateVehicleKm(v.id, parseFloat(km));
       closeModal(); renderRevisiones(); renderAlertBanner(v.id); showToast('Revisión registrada — Gasto actualizado');
     };
@@ -1254,7 +1277,7 @@ function renderAverias() {
         <td data-label="ID"><code class="id-code">${a.id}</code></td>
         <td data-label="Fecha">${fmt.date(a.fecha)}</td>
         <td data-label="Prioridad">${priorityBadge(a.prioridad)}</td>
-        <td data-label="Síntomas">${a.sintomas}</td><td data-label="Diagnóstico">${a.diagnostico || '—'}</td><td data-label="Solución">${a.solucion || '—'}</td>
+        <td data-label="Síntomas"><strong>${a.sintomas}</strong><br><small class="text-muted">${a.taller || ''} ${a.factura ? `| Fact: ${a.factura}` : ''}</small></td><td data-label="Diagnóstico">${a.diagnostico || '—'}</td><td data-label="Solución">${a.solucion || '—'}</td>
         <td data-label="Coste" class="gasto">${fmt.currency(a.coste)}</td>
         <td><button class="btn btn-danger btn-xs" data-delete="averias" data-id="${a.id}">✕</button></td>
       </tr>`).join('')}</tbody>
@@ -1273,6 +1296,18 @@ function renderAverias() {
       <div class="form-row">
         <div class="form-group"><label>Prioridad</label><select id="af-pri" class="form-input"><option>Baja</option><option>Media</option><option>Alta</option></select></div>
         <div class="form-group"><label>Coste Final (€)</label><input id="af-coste" type="number" class="form-input" readonly></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Taller / Comercio</label><input id="af-taller" class="form-input" placeholder="Nombre del taller"></div>
+        <div class="form-group"><label>Nº Factura</label><input id="af-fact" class="form-input" placeholder="Ref. factura"></div>
+      </div>
+      <div class="form-group"><label>Forma de Pago</label>
+        <select id="af-pago" class="form-input">
+          <option value="Tarjeta">Tarjeta</option>
+          <option value="Efectivo">Efectivo</option>
+          <option value="Transferencia">Transferencia</option>
+          <option value="Bizum">Bizum</option>
+        </select>
       </div>
       
       <!-- Invoice concepts -->
@@ -1309,7 +1344,10 @@ function renderAverias() {
         coste: parseFloat(coste),
         diagnostico: document.getElementById('af-diag').value.trim(),
         solucion: document.getElementById('af-sol').value.trim(),
-        prioridad: document.getElementById('af-pri').value
+        prioridad: document.getElementById('af-pri').value,
+        taller: document.getElementById('af-taller').value.trim(),
+        factura: document.getElementById('af-fact').value.trim(),
+        formaPago: document.getElementById('af-pago').value
       });
       closeModal(); renderAverias(); showToast('Avería registrada — Gasto actualizado');
     };
@@ -1365,7 +1403,7 @@ function renderRecambios() {
         <td data-label="ID"><code class="id-code">${r.id}</code></td>
         <td data-label="Pieza"><strong>${r.nombre}</strong></td>
         <td data-label="Marca / Ref.">${r.marca || '—'}<br><small class="text-muted">${r.referencia || ''}</small></td>
-        <td data-label="Tienda">${r.tienda || '—'}</td>
+        <td data-label="Tienda">${r.tienda || '—'}<br><small class="text-muted">${r.factura ? `Fact: ${r.factura}` : ''}</small></td>
         <td data-label="Precio" class="gasto">${fmt.currency(r.precio)}</td>
         <td data-label="Vinculado">${linkedLabel(r)}</td>
         <td><button class="btn btn-danger btn-xs" data-delete="recambios" data-id="${r.id}">✕</button></td>
@@ -1386,6 +1424,17 @@ function renderRecambios() {
       <div class="form-row">
         <div class="form-group"><label>Tienda / Proveedor *</label><input id="rr-tienda" class="form-input" placeholder="Ej: Amazon, Oscaro, Taller Pepe"></div>
         <div class="form-group"><label>Coste Final (€)</label><input id="rr-precio" type="number" class="form-input" readonly></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Nº Factura</label><input id="rr-fact" class="form-input" placeholder="Ref. factura"></div>
+        <div class="form-group"><label>Forma de Pago</label>
+          <select id="rr-pago" class="form-input">
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Bizum">Bizum</option>
+          </select>
+        </div>
       </div>
       <div class="form-group"><label>Vincular a</label><select id="rr-link" class="form-input">${linkOpts}</select></div>
 
@@ -1413,6 +1462,8 @@ function renderRecambios() {
       const rows = document.getElementById('invoice-body').querySelectorAll('tr');
       if (!tienda || !rows.length) { alert('Completa la tienda y añade al menos un concepto'); return; }
 
+      const factura = document.getElementById('rr-fact').value.trim();
+      const formaPago = document.getElementById('rr-pago').value;
       const lv = document.getElementById('rr-link').value;
       const linkedTo = lv ? { type: lv.split('|')[0], id: lv.split('|')[1] } : null;
 
@@ -1433,7 +1484,9 @@ function renderRecambios() {
           referencia: ref,
           tienda: tienda,
           precio: itemTotal, // Guardamos el importe final del item
-          linkedTo
+          linkedTo,
+          factura,
+          formaPago
         });
       });
 
