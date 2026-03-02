@@ -172,8 +172,8 @@ function setupInvoiceLogic() {
   const addLine = () => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input class="inv-ref" placeholder="Ref..."></td>
-      <td><input class="inv-desc" placeholder="Descripción..."></td>
+      <td class="col-ref"><input class="inv-ref" placeholder="Ref..."></td>
+      <td class="col-desc"><input class="inv-desc" placeholder="Descripción..."></td>
       <td class="col-qty"><input type="number" class="inv-qty" value="1" step="0.1" min="0"></td>
       <td class="col-price"><input type="number" class="inv-price" value="0" step="0.01" min="0"></td>
       <td class="col-dto"><input type="number" class="inv-dto" value="0" min="0" max="100"></td>

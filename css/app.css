@@ -750,8 +750,8 @@ select.form-input option {
 
 .invoice-table {
     width: 100%;
-    min-width: 600px;
-    /* Asegura legibilidad con scroll horizontal en móvil */
+    min-width: 500px;
+    /* Reducido para evitar scroll lateral innecesario */
     border-collapse: collapse;
     font-size: 0.85rem;
 }
@@ -872,8 +872,17 @@ input[type=number] {
     outline: none;
 }
 
-.col-ref {
-    width: 80px;
+.col-ref,
+.invoice-table th:nth-child(1),
+.invoice-table td:nth-child(1) {
+    width: 50px;
+}
+
+.col-desc,
+.invoice-table th:nth-child(2),
+.invoice-table td:nth-child(2) {
+    width: 150px;
+    /* Reducido un poco más para asegurar espacio */
 }
 
 .col-qty {
