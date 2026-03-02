@@ -142,6 +142,7 @@ function closeModal() { document.getElementById('modal-overlay').classList.add('
 function setupInvoiceLogic(existingItems = null) {
   const container = document.getElementById('invoice-body');
   const addBtn = document.getElementById('btn-add-concept');
+  const ivaToggle = document.getElementById('inv-iva-inc');
   if (!container || !addBtn) return;
 
   container.innerHTML = ''; // Limpiar previo
@@ -157,17 +158,28 @@ function setupInvoiceLogic(existingItems = null) {
       accumulatedItemsTotal += rowTotal;
     });
 
-    const totalFactura = accumulatedItemsTotal;
-    const baseImponible = totalFactura / 1.21;
-    const iva = totalFactura - baseImponible;
+    const isIvaInc = ivaToggle ? ivaToggle.checked : true;
+    let totalFactura, baseImponible, iva;
+
+    if (isIvaInc) {
+      totalFactura = accumulatedItemsTotal;
+      baseImponible = totalFactura / 1.21;
+      iva = totalFactura - baseImponible;
+    } else {
+      baseImponible = accumulatedItemsTotal;
+      iva = baseImponible * 0.21;
+      totalFactura = baseImponible + iva;
+    }
 
     document.getElementById('inv-sub').textContent = fmt.currency(baseImponible);
-    document.getElementById('inv-iva').textContent = fmt.currency(iva);
+    document.getElementById('inv-iva').textContent = fmt.currency(iva || 0);
     document.getElementById('inv-total-text').textContent = fmt.currency(totalFactura);
 
     const mainCostInput = document.getElementById('rf-coste') || document.getElementById('af-coste') || document.getElementById('rr-precio');
     if (mainCostInput) mainCostInput.value = totalFactura.toFixed(2);
   };
+
+  if (ivaToggle) ivaToggle.onchange = updateTotals;
 
   const addLine = (item = null) => {
     const tr = document.createElement('tr');
@@ -1196,16 +1208,14 @@ function renderRevisiones() {
 
     ${!items.length ? emptySection('🔩', 'Sin revisiones registradas o que coincidan con los filtros') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>ID</th><th>Fecha</th><th>Prioridad</th><th>Operación</th><th>Km</th><th>Coste</th><th>Próxima</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Operación</th><th>Km</th><th>Coste</th><th>Próxima</th><th></th></tr></thead>
       <tbody>${items.map(r => `<tr>
-        <td data-label="ID"><code class="id-code">${r.id}</code></td>
         <td data-label="Fecha">${fmt.date(r.fecha)}</td>
-        <td data-label="Prioridad">${priorityBadge(r.prioridad)}</td>
         <td data-label="Operación"><strong>${r.operacion}</strong><br><small class="text-muted">${r.taller || ''} ${r.factura ? `| Fact: ${r.factura}` : ''}</small>${r.notas ? `<br><small class="text-muted">${r.notas}</small>` : ''}</td>
         <td data-label="Km">${fmt.km(r.km)}</td>
         <td data-label="Coste" class="gasto">${fmt.currency(r.coste)}</td>
         <td data-label="Próxima">${fmt.date(r.proximaFecha)}</td>
-        <td data-label="Estado">${daysBadge(r.proximaFecha)}</td>
+        <td data-label="Próxima">${fmt.date(r.proximaFecha)}</td>
         <td class="text-right" style="white-space:nowrap">
           <div class="flex gap-2 justify-end">
             <button class="btn btn-secondary btn-xs" data-edit="revisiones" data-id="${r.id}" title="Editar">✎</button>
@@ -1260,6 +1270,11 @@ function openRevisionModal(id = null, rerender) {
     
     <!-- Invoice concepts -->
     <div class="invoice-items-wrap">
+      <div class="invoice-header-ctrl" style="margin-bottom: 10px;">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold uppercase tracking-wider text-muted">
+          <input type="checkbox" id="inv-iva-inc" ${data && data.ivaIncluido === false ? '' : 'checked'}> Precios incluyen IVA
+        </label>
+      </div>
       <table class="invoice-table">
         <thead><tr><th>Ref</th><th>Descripción</th><th class="col-qty">Cant.</th><th class="col-price">Precio</th><th class="col-dto">Dto%</th><th class="col-total">Importe</th><th></th></tr></thead>
         <tbody id="invoice-body"></tbody>
@@ -1292,6 +1307,7 @@ function openRevisionModal(id = null, rerender) {
       taller: document.getElementById('rf-taller').value.trim(),
       factura: document.getElementById('rf-fact').value.trim(),
       formaPago: document.getElementById('rf-pago').value,
+      ivaIncluido: document.getElementById('inv-iva-inc').checked,
       conceptos: getInvoiceItems()
     };
     if (!fields.fecha || !fields.operacion || isNaN(fields.coste)) { alert('Completa los campos obligatorios (*)'); return; }
@@ -1329,11 +1345,9 @@ function renderAverias() {
 
     ${!items.length ? emptySection('⚠️', 'Sin averías registradas o que coincidan con los filtros') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>ID</th><th>Fecha</th><th>Prioridad</th><th>Síntomas</th><th>Diagnóstico</th><th>Solución</th><th>Coste</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Síntomas</th><th>Diagnóstico</th><th>Solución</th><th>Coste</th><th></th></tr></thead>
       <tbody>${items.map(a => `<tr>
-        <td data-label="ID"><code class="id-code">${a.id}</code></td>
         <td data-label="Fecha">${fmt.date(a.fecha)}</td>
-        <td data-label="Prioridad">${priorityBadge(a.prioridad)}</td>
         <td data-label="Síntomas"><strong>${a.sintomas}</strong><br><small class="text-muted">${a.taller || ''} ${a.factura ? `| Fact: ${a.factura}` : ''}</small></td><td data-label="Diagnóstico">${a.diagnostico || '—'}</td><td data-label="Solución">${a.solucion || '—'}</td>
         <td data-label="Coste" class="gasto">${fmt.currency(a.coste)}</td>
         <td class="text-right" style="white-space:nowrap">
@@ -1386,6 +1400,11 @@ function openAveriaModal(id = null, rerender) {
     
     <!-- Invoice concepts -->
     <div class="invoice-items-wrap">
+      <div class="invoice-header-ctrl" style="margin-bottom: 10px;">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold uppercase tracking-wider text-muted">
+          <input type="checkbox" id="inv-iva-inc" ${data && data.ivaIncluido === false ? '' : 'checked'}> Precios incluyen IVA
+        </label>
+      </div>
       <table class="invoice-table">
         <thead><tr><th>Ref</th><th>Descripción</th><th class="col-qty">Cant.</th><th class="col-price">Precio</th><th class="col-dto">Dto%</th><th class="col-total">Importe</th><th></th></tr></thead>
         <tbody id="invoice-body"></tbody>
@@ -1420,6 +1439,7 @@ function openAveriaModal(id = null, rerender) {
       taller: document.getElementById('af-taller').value.trim(),
       factura: document.getElementById('af-fact').value.trim(),
       formaPago: document.getElementById('af-pago').value,
+      ivaIncluido: document.getElementById('inv-iva-inc').checked,
       conceptos: getInvoiceItems()
     };
     if (!fields.fecha || !fields.sintomas || isNaN(fields.coste)) { alert('Completa los campos obligatorios (*)'); return; }
@@ -1474,9 +1494,8 @@ function renderRecambios() {
 
     ${!items.length ? emptySection('📦', 'Sin recambios registrados o que coincidan con los filtros') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>ID</th><th>Pieza</th><th>Marca / Ref.</th><th>Tienda</th><th>Precio</th><th>Vinculado a</th><th></th></tr></thead>
+      <thead><tr><th>Pieza</th><th>Marca / Ref.</th><th>Tienda</th><th>Precio</th><th>Vinculado a</th><th></th></tr></thead>
       <tbody>${items.map(r => `<tr>
-        <td data-label="ID"><code class="id-code">${r.id}</code></td>
         <td data-label="Pieza"><strong>${r.nombre}</strong></td>
         <td data-label="Marca / Ref.">${r.marca || '—'}<br><small class="text-muted">${r.referencia || ''}</small></td>
         <td data-label="Tienda">${r.tienda || '—'}<br><small class="text-muted">${r.factura ? `Fact: ${r.factura}` : ''}</small></td>
@@ -1532,6 +1551,11 @@ function openRecambioModal(id = null, rerender) {
 
     <!-- Invoice concepts -->
     <div class="invoice-items-wrap">
+      <div class="invoice-header-ctrl" style="margin-bottom: 10px;">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold uppercase tracking-wider text-muted">
+          <input type="checkbox" id="inv-iva-inc" ${data && data.ivaIncluido === false ? '' : 'checked'}> Precios incluyen IVA
+        </label>
+      </div>
       <table class="invoice-table">
         <thead><tr><th>Ref</th><th>Descripción</th><th class="col-qty">Cant.</th><th class="col-price">Precio</th><th class="col-dto">Dto%</th><th class="col-total">Importe</th><th></th></tr></thead>
         <tbody id="invoice-body"></tbody>
@@ -1558,11 +1582,12 @@ function openRecambioModal(id = null, rerender) {
     const linkedTo = lv ? { type: lv.split('|')[0], id: lv.split('|')[1] } : null;
     const factura = document.getElementById('rr-fact').value.trim();
     const formaPago = document.getElementById('rr-pago').value;
+    const ivaIncluido = document.getElementById('inv-iva-inc').checked;
     const conceptos = getInvoiceItems();
 
     if (!tienda || isNaN(precio)) { alert('Completa la tienda y los importes'); return; }
 
-    const fields = { nombre: data ? data.nombre : 'Recambio editado', referencia: data ? data.referencia : '', tienda, precio, linkedTo, factura, formaPago, conceptos };
+    const fields = { nombre: data ? data.nombre : 'Recambio editado', referencia: data ? data.referencia : '', tienda, precio, linkedTo, factura, formaPago, ivaIncluido, conceptos };
 
     // Si es edición de recambio, lo simplificamos a actualizar el objeto
     if (isEdit) updateRecambio(id, fields);
