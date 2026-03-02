@@ -456,15 +456,15 @@ function openSaleReport(vid) {
           <p style="margin:10px 0 0; color: #94A3B8;">${v.matricula || 'Sin Matrícula'} &nbsp;•&nbsp; ${v.año} &nbsp;•&nbsp; ${fmt.km(v.km)}</p>
         </div>
       </div>
-      <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 20px;">Historial de Mantenimiento Preventivo</h3>
-      <table class="report-table" style="width:100%; border-collapse: collapse; margin-bottom: 30px;">
-        <thead><tr><th>Fecha</th><th>Operación</th><th>KM</th><th>Prioridad</th></tr></thead>
-        <tbody>${revs.length ? revs.map(r => `<tr><td>${fmt.date(r.fecha)}</td><td>${r.operacion}</td><td>${fmt.km(r.km)}</td><td>${priorityBadge(r.prioridad)}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center; padding: 20px;">Sin registros</td></tr>'}</tbody>
+      <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Mantenimiento Preventivo</h3>
+      <table class="report-table" style="width:100%; border-collapse: collapse; margin-bottom: 25px;">
+        <thead><tr><th>Fecha</th><th>Operación</th><th>KM</th><th>Taller / Comercio</th></tr></thead>
+        <tbody>${revs.length ? revs.map(r => `<tr><td>${fmt.date(r.fecha)}</td><td>${r.operacion}</td><td>${fmt.km(r.km)}</td><td>${r.taller || '—'}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
-      <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 20px;">Historial de Reparaciones</h3>
+      <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Reparaciones</h3>
       <table class="report-table" style="width:100%; border-collapse: collapse;">
         <thead><tr><th>Fecha</th><th>Avería/Síntoma</th><th>Solución</th></tr></thead>
-        <tbody>${aves.length ? aves.map(a => `<tr><td>${fmt.date(a.fecha)}</td><td>${a.sintomas}</td><td>${a.solucion}</td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center; padding: 20px;">Sin registros</td></tr>'}</tbody>
+        <tbody>${aves.length ? aves.map(a => `<tr><td>${fmt.date(a.fecha)}</td><td>${a.sintomas}</td><td>${a.solucion}</td></tr>`).join('') : '<tr><td colspan="3" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
       <p style="margin-top:40px; font-size:0.8rem; text-align:center; opacity: 0.7;">Informe generado por MotorMaster — Valor de mercado incrementado por transparencia técnica.</p>
     </div>
@@ -474,29 +474,30 @@ function openSaleReport(vid) {
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/app.css">
     <style>
-      body { background: #0A1322 !important; color: white !important; font-family: 'Roboto', sans-serif !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { background: #0A1322 !important; color: white !important; font-family: 'Roboto', sans-serif !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 0.8rem !important; }
       .report-table { 
           width: 100% !important; 
           border-collapse: collapse !important; 
           display: table !important; 
           table-layout: fixed !important; 
-          margin-bottom: 30px !important;
+          margin-bottom: 20px !important;
       }
       .report-table thead { display: table-header-group !important; }
       .report-table tr { display: table-row !important; background: transparent !important; }
       .report-table th, .report-table td { 
         display: table-cell !important; 
-        padding: 12px 15px !important; 
+        padding: 6px 10px !important; 
         border-bottom: 1px solid #334155 !important; 
         text-align: left;
         color: white !important;
+        font-size: 0.75rem !important;
       }
       .report-table td::before { content: none !important; } /* Kill 'data-label' mobile stacks */
       .report-table th { 
         background: #1E293B !important; 
         color: #94A3B8 !important; 
         text-transform: uppercase; 
-        font-size: 0.75rem; 
+        font-size: 0.7rem !important; 
       }
       .priority-tag { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
       .pri-high { background: rgba(236,72,153,0.2) !important; color: #ec4899 !important; }
