@@ -471,19 +471,19 @@ function openSaleReport(vid) {
       </div>
       <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Mantenimiento Preventivo</h3>
       <table class="report-table" style="width:100%; border-collapse: collapse; margin-bottom: 25px;">
-        <thead><tr><th>FECHA</th><th>OPERACION</th><th>TALLER/COMERCIO</th><th>KMS</th><th>COSTE</th></tr></thead>
+        <thead><tr><th style="width:15%">FECHA</th><th style="width:30%">OPERACION</th><th style="width:25%">TALLER/COMERCIO</th><th style="width:15%">KMS</th><th style="width:15%">COSTE</th></tr></thead>
         <tbody>${revs.length ? revs.sort((a, b) => b.fecha.localeCompare(a.fecha)).map(r => `<tr><td>${fmt.date(r.fecha)}</td><td>${r.operacion}</td><td>${r.taller || '—'}</td><td>${fmt.km(r.km)}</td><td>${fmt.currency(r.coste)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
 
       <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Reparaciones</h3>
       <table class="report-table" style="width:100%; border-collapse: collapse; margin-bottom: 25px;">
-        <thead><tr><th>FECHA</th><th>AVERÍA/SÍNTOMA</th><th>TALLER/COMERCIO</th><th>KMS</th><th>COSTE</th></tr></thead>
+        <thead><tr><th style="width:15%">FECHA</th><th style="width:30%">AVERÍA/SÍNTOMA</th><th style="width:25%">TALLER/COMERCIO</th><th style="width:15%">KMS</th><th style="width:15%">COSTE</th></tr></thead>
         <tbody>${aves.length ? aves.sort((a, b) => b.fecha.localeCompare(a.fecha)).map(a => `<tr><td>${fmt.date(a.fecha)}</td><td>${a.sintomas}</td><td>${a.taller || '—'}</td><td>${fmt.km(a.km || 0)}</td><td>${fmt.currency(a.coste)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
 
       <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Recambios</h3>
       <table class="report-table" style="width:100%; border-collapse: collapse;">
-        <thead><tr><th>FECHA</th><th>PIEZA/ARTÍCULO</th><th>TIENDA</th><th>KMS</th><th>COSTE</th></tr></thead>
+        <thead><tr><th style="width:15%">FECHA</th><th style="width:30%">PIEZA/ARTÍCULO</th><th style="width:25%">TIENDA</th><th style="width:15%">KMS</th><th style="width:15%">COSTE</th></tr></thead>
         <tbody>${recs.length ? recs.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).map(r => `<tr><td>${fmt.date(r.fecha || '')}</td><td>${r.nombre}${r.marca || r.referencia ? `<br><small style="opacity:0.7">${r.marca || ''} ${r.referencia || ''}</small>` : ''}</td><td>${r.tienda || '—'}</td><td>${fmt.km(r.km || 0)}</td><td>${fmt.currency(r.precio)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
       <p style="margin-top:40px; font-size:0.8rem; text-align:center; opacity: 0.7;">Informe generado por MotorMaster — Valor de mercado incrementado por transparencia técnica.</p>
