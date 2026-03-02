@@ -139,10 +139,12 @@ function openModal(title, body) {
 function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
 
 /* ---- INVOICE HELPER ---- */
-function setupInvoiceLogic() {
+function setupInvoiceLogic(existingItems = null) {
   const container = document.getElementById('invoice-body');
   const addBtn = document.getElementById('btn-add-concept');
   if (!container || !addBtn) return;
+
+  container.innerHTML = ''; // Limpiar previo
 
   const updateTotals = () => {
     let accumulatedItemsTotal = 0;
@@ -155,8 +157,6 @@ function setupInvoiceLogic() {
       accumulatedItemsTotal += rowTotal;
     });
 
-    // Nueva Lógica: El total de los items es el TOTAL FACTURA.
-    // Calculamos la base imponible y el IVA a partir de ese total.
     const totalFactura = accumulatedItemsTotal;
     const baseImponible = totalFactura / 1.21;
     const iva = totalFactura - baseImponible;
@@ -169,14 +169,14 @@ function setupInvoiceLogic() {
     if (mainCostInput) mainCostInput.value = totalFactura.toFixed(2);
   };
 
-  const addLine = () => {
+  const addLine = (item = null) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="col-ref"><input class="inv-ref" placeholder="Ref..."></td>
-      <td class="col-desc"><input class="inv-desc" placeholder="Descripción..."></td>
-      <td class="col-qty"><input type="number" class="inv-qty" value="1" step="0.1" min="0"></td>
-      <td class="col-price"><input type="number" class="inv-price" value="0" step="0.01" min="0"></td>
-      <td class="col-dto"><input type="number" class="inv-dto" value="0" min="0" max="100"></td>
+      <td class="col-ref"><input class="inv-ref" placeholder="Ref..." value="${item ? (item.ref || '') : ''}"></td>
+      <td class="col-desc"><input class="inv-desc" placeholder="Descripción..." value="${item ? (item.desc || '') : ''}"></td>
+      <td class="col-qty"><input type="number" class="inv-qty" value="${item ? item.qty : 1}" step="0.1" min="0"></td>
+      <td class="col-price"><input type="number" class="inv-price" value="${item ? item.price : 0}" step="0.01" min="0"></td>
+      <td class="col-dto"><input type="number" class="inv-dto" value="${item ? item.dto : 0}" min="0" max="100"></td>
       <td class="col-total">0,00 €</td>
       <td><button class="btn-del-line" style="background:none; border:none; color:var(--clr-danger); cursor:pointer; font-size:1.2rem">×</button></td>
     `;
@@ -186,8 +186,29 @@ function setupInvoiceLogic() {
     updateTotals();
   };
 
-  addBtn.onclick = addLine;
-  addLine();
+  addBtn.onclick = () => addLine();
+
+  if (existingItems && existingItems.length) {
+    existingItems.forEach(it => addLine(it));
+  } else {
+    addLine();
+  }
+}
+
+function getInvoiceItems() {
+  const container = document.getElementById('invoice-body');
+  if (!container) return [];
+  const items = [];
+  container.querySelectorAll('tr').forEach(tr => {
+    const ref = tr.querySelector('.inv-ref').value.trim();
+    const desc = tr.querySelector('.inv-desc').value.trim();
+    if (!desc) return;
+    const qty = parseFloat(tr.querySelector('.inv-qty').value) || 0;
+    const price = parseFloat(tr.querySelector('.inv-price').value) || 0;
+    const dto = parseFloat(tr.querySelector('.inv-dto').value) || 0;
+    items.push({ ref, desc, qty, price, dto });
+  });
+  return items;
 }
 
 /* ---- ROUTER ---- */
@@ -1184,9 +1205,11 @@ function renderRevisiones() {
         <td data-label="Coste" class="gasto">${fmt.currency(r.coste)}</td>
         <td data-label="Próxima">${fmt.date(r.proximaFecha)}</td>
         <td data-label="Estado">${daysBadge(r.proximaFecha)}</td>
-        <td style="white-space:nowrap">
-          <button class="btn btn-secondary btn-xs" data-edit="revisiones" data-id="${r.id}" title="Editar">✎</button>
-          <button class="btn btn-danger btn-xs" data-delete="revisiones" data-id="${r.id}" title="Eliminar">✕</button>
+        <td class="text-right" style="white-space:nowrap">
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-secondary btn-xs" data-edit="revisiones" data-id="${r.id}" title="Editar">✎</button>
+            <button class="btn btn-danger btn-xs" data-delete="revisiones" data-id="${r.id}" title="Eliminar">✕</button>
+          </div>
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
@@ -1254,7 +1277,7 @@ function openRevisionModal(id = null, rerender) {
     <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-rev">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
   </div>`);
 
-  setupInvoiceLogic(); // No recuperamos conceptos factura por ahora (es una mejora futura)
+  setupInvoiceLogic(data ? data.conceptos : null);
 
   document.getElementById('btn-save-rev').onclick = () => {
     const fields = {
@@ -1267,7 +1290,8 @@ function openRevisionModal(id = null, rerender) {
       notas: document.getElementById('rf-notas').value.trim(),
       taller: document.getElementById('rf-taller').value.trim(),
       factura: document.getElementById('rf-fact').value.trim(),
-      formaPago: document.getElementById('rf-pago').value
+      formaPago: document.getElementById('rf-pago').value,
+      conceptos: getInvoiceItems()
     };
     if (!fields.fecha || !fields.operacion || isNaN(fields.coste)) { alert('Completa los campos obligatorios (*)'); return; }
 
@@ -1311,9 +1335,11 @@ function renderAverias() {
         <td data-label="Prioridad">${priorityBadge(a.prioridad)}</td>
         <td data-label="Síntomas"><strong>${a.sintomas}</strong><br><small class="text-muted">${a.taller || ''} ${a.factura ? `| Fact: ${a.factura}` : ''}</small></td><td data-label="Diagnóstico">${a.diagnostico || '—'}</td><td data-label="Solución">${a.solucion || '—'}</td>
         <td data-label="Coste" class="gasto">${fmt.currency(a.coste)}</td>
-        <td style="white-space:nowrap">
-          <button class="btn btn-secondary btn-xs" data-edit="averias" data-id="${a.id}" title="Editar">✎</button>
-          <button class="btn btn-danger btn-xs" data-delete="averias" data-id="${a.id}" title="Eliminar">✕</button>
+        <td class="text-right" style="white-space:nowrap">
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-secondary btn-xs" data-edit="averias" data-id="${a.id}" title="Editar">✎</button>
+            <button class="btn btn-danger btn-xs" data-delete="averias" data-id="${a.id}" title="Eliminar">✕</button>
+          </div>
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
@@ -1380,7 +1406,7 @@ function openAveriaModal(id = null, rerender) {
     <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-ave">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
   </div>`);
 
-  setupInvoiceLogic();
+  setupInvoiceLogic(data ? data.conceptos : null);
 
   document.getElementById('btn-save-ave').onclick = () => {
     const fields = {
@@ -1392,7 +1418,8 @@ function openAveriaModal(id = null, rerender) {
       prioridad: document.getElementById('af-pri').value,
       taller: document.getElementById('af-taller').value.trim(),
       factura: document.getElementById('af-fact').value.trim(),
-      formaPago: document.getElementById('af-pago').value
+      formaPago: document.getElementById('af-pago').value,
+      conceptos: getInvoiceItems()
     };
     if (!fields.fecha || !fields.sintomas || isNaN(fields.coste)) { alert('Completa los campos obligatorios (*)'); return; }
 
@@ -1454,9 +1481,11 @@ function renderRecambios() {
         <td data-label="Tienda">${r.tienda || '—'}<br><small class="text-muted">${r.factura ? `Fact: ${r.factura}` : ''}</small></td>
         <td data-label="Precio" class="gasto">${fmt.currency(r.precio)}</td>
         <td data-label="Vinculado">${linkedLabel(r)}</td>
-        <td style="white-space:nowrap">
-          <button class="btn btn-secondary btn-xs" data-edit="recambios" data-id="${r.id}" title="Editar">✎</button>
-          <button class="btn btn-danger btn-xs" data-delete="recambios" data-id="${r.id}" title="Eliminar">✕</button>
+        <td class="text-right" style="white-space:nowrap">
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-secondary btn-xs" data-edit="recambios" data-id="${r.id}" title="Editar">✎</button>
+            <button class="btn btn-danger btn-xs" data-delete="recambios" data-id="${r.id}" title="Eliminar">✕</button>
+          </div>
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
@@ -1519,7 +1548,7 @@ function openRecambioModal(id = null, rerender) {
     <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-rec">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
   </div>`);
 
-  setupInvoiceLogic();
+  setupInvoiceLogic(data ? data.conceptos : null);
 
   document.getElementById('btn-save-rec').onclick = () => {
     const tienda = document.getElementById('rr-tienda').value.trim();
@@ -1528,24 +1557,18 @@ function openRecambioModal(id = null, rerender) {
     const linkedTo = lv ? { type: lv.split('|')[0], id: lv.split('|')[1] } : null;
     const factura = document.getElementById('rr-fact').value.trim();
     const formaPago = document.getElementById('rr-pago').value;
+    const conceptos = getInvoiceItems();
 
     if (!tienda || isNaN(precio)) { alert('Completa la tienda y los importes'); return; }
 
-    const fields = { nombre: data ? data.nombre : 'Recambio editado', referencia: data ? data.referencia : '', tienda, precio, linkedTo, factura, formaPago };
+    const fields = { nombre: data ? data.nombre : 'Recambio editado', referencia: data ? data.referencia : '', tienda, precio, linkedTo, factura, formaPago, conceptos };
 
-    // Si es edición de recambio, lo simplificamos a actualizar el objeto (los subconceptos no se editan individualmente aun)
+    // Si es edición de recambio, lo simplificamos a actualizar el objeto
     if (isEdit) updateRecambio(id, fields);
     else {
       // Si es nuevo, usamos la lógica de múltiples filas del invoice
-      const rows = document.getElementById('invoice-body').querySelectorAll('tr');
-      rows.forEach(tr => {
-        const ref = tr.querySelector('.inv-ref').value.trim();
-        const desc = tr.querySelector('.inv-desc').value.trim();
-        const qty = parseFloat(tr.querySelector('.inv-qty').value) || 0;
-        const prc = parseFloat(tr.querySelector('.inv-price').value) || 0;
-        const dto = parseFloat(tr.querySelector('.inv-dto').value) || 0;
-        const itemTotal = qty * prc * (1 - dto / 100);
-        addRecambio({ nombre: desc, referencia: ref, tienda, precio: itemTotal, linkedTo, factura, formaPago });
+      conceptos.forEach(item => {
+        addRecambio({ nombre: item.desc, referencia: item.ref, tienda, precio: item.qty * item.price * (1 - item.dto / 100), linkedTo, factura, formaPago, conceptos: [item] });
       });
     }
 
