@@ -145,22 +145,28 @@ function setupInvoiceLogic() {
   if (!container || !addBtn) return;
 
   const updateTotals = () => {
-    let subtotal = 0;
+    let accumulatedItemsTotal = 0;
     container.querySelectorAll('tr').forEach(tr => {
       const qty = parseFloat(tr.querySelector('.inv-qty').value) || 0;
       const price = parseFloat(tr.querySelector('.inv-price').value) || 0;
       const dto = parseFloat(tr.querySelector('.inv-dto').value) || 0;
-      const total = (qty * price) * (1 - dto / 100);
-      tr.querySelector('.col-total').textContent = fmt.currency(total);
-      subtotal += total;
+      const rowTotal = (qty * price) * (1 - dto / 100);
+      tr.querySelector('.col-total').textContent = fmt.currency(rowTotal);
+      accumulatedItemsTotal += rowTotal;
     });
-    const iva = subtotal * 0.21;
-    const total = subtotal + iva;
-    document.getElementById('inv-sub').textContent = fmt.currency(subtotal);
+
+    // Nueva Lógica: El total de los items es el TOTAL FACTURA.
+    // Calculamos la base imponible y el IVA a partir de ese total.
+    const totalFactura = accumulatedItemsTotal;
+    const baseImponible = totalFactura / 1.21;
+    const iva = totalFactura - baseImponible;
+
+    document.getElementById('inv-sub').textContent = fmt.currency(baseImponible);
     document.getElementById('inv-iva').textContent = fmt.currency(iva);
-    document.getElementById('inv-total-text').textContent = fmt.currency(total);
-    const mainCostInput = document.getElementById('rf-coste') || document.getElementById('af-coste');
-    if (mainCostInput) mainCostInput.value = total.toFixed(2);
+    document.getElementById('inv-total-text').textContent = fmt.currency(totalFactura);
+
+    const mainCostInput = document.getElementById('rf-coste') || document.getElementById('af-coste') || document.getElementById('rr-precio');
+    if (mainCostInput) mainCostInput.value = totalFactura.toFixed(2);
   };
 
   const addLine = () => {
@@ -1393,14 +1399,16 @@ function renderRecambios() {
         const q = parseFloat(tr.querySelector('.inv-qty').value) || 0;
         const p = parseFloat(tr.querySelector('.inv-price').value) || 0;
         const d = parseFloat(tr.querySelector('.inv-dto').value) || 0;
-        // Precio con IVA para el registro individual
-        const totalConIva = (q * p) * (1 - d / 100) * 1.21;
+
+        // El precio ingresado ya incluye el IVA en la nueva lógica del usuario
+        // pero para el registro individual de recambios, seguimos guardando el total por item
+        const itemTotal = (q * p) * (1 - d / 100);
 
         addRecambio({
           nombre: desc,
           referencia: ref,
           tienda: tienda,
-          precio: totalConIva,
+          precio: itemTotal, // Guardamos el importe final del item
           linkedTo
         });
       });
