@@ -1317,3 +1317,63 @@ body.workshop-mode .vehicle-hero {
 .alert-card.alert-warning {
     border-left: 4px solid var(--clr-warning);
 }
+
+/* ===== FILTER BAR ===== */
+.filter-bar {
+    display: flex;
+    gap: var(--sp-md);
+    padding: var(--sp-md) var(--sp-xl);
+    background: var(--clr-surface-2);
+    border-bottom: 1px solid var(--clr-border);
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 4px 12px;
+    border-radius: 99px;
+    border: 1px solid var(--clr-border);
+}
+
+.filter-group label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--clr-text-muted);
+    text-transform: uppercase;
+}
+
+.filter-input {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.filter-input::placeholder {
+    color: var(--clr-text-muted);
+}
+
+.btn-filter-reset {
+    background: transparent;
+    color: var(--clr-text-muted);
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.btn-filter-reset:hover {
+    color: var(--clr-accent);
+}
+
+@media (max-width: 768px) {
+    .filter-bar {
+        padding: var(--sp-md);
+        gap: var(--sp-sm);
+    }
+}

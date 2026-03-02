@@ -8,7 +8,87 @@ const fmt = {
   today: () => new Date().toISOString().split('T')[0],
 };
 
+// Filter State
+let filters = {
+  revisiones: { q: '', priority: '', dateFrom: '', dateTo: '' },
+  averias: { q: '', priority: '', dateFrom: '', dateTo: '' },
+  recambios: { q: '', link: '', dateFrom: '', dateTo: '' }
+};
+
+function renderFilterBar(type) {
+  const f = filters[type];
+  const isRevisionOrAveria = type === 'revisiones' || type === 'averias';
+
+  return `
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" class="filter-input" id="filt-q" placeholder="Filtra por texto..." value="${f.q}" autocomplete="off">
+      </div>
+      ${isRevisionOrAveria ? `
+      <div class="filter-group">
+        <label>Prioridad</label>
+        <select class="filter-input" id="filt-pri">
+          <option value="">Todas</option>
+          <option value="Alta" ${f.priority === 'Alta' ? 'selected' : ''}>Alta</option>
+          <option value="Media" ${f.priority === 'Media' ? 'selected' : ''}>Media</option>
+          <option value="Baja" ${f.priority === 'Baja' ? 'selected' : ''}>Baja</option>
+        </select>
+      </div>` : `
+      <div class="filter-group">
+        <label>Vínculo</label>
+        <select class="filter-input" id="filt-link">
+          <option value="">Todos</option>
+          <option value="revision" ${f.link === 'revision' ? 'selected' : ''}>Revisión</option>
+          <option value="averia" ${f.link === 'averia' ? 'selected' : ''}>Avería</option>
+          <option value="none" ${f.link === 'none' ? 'selected' : ''}>Sin vínculo</option>
+        </select>
+      </div>`}
+      <div class="filter-group">
+        <label>Desde</label>
+        <input type="date" class="filter-input" id="filt-from" value="${f.dateFrom}">
+      </div>
+      <div class="filter-group">
+        <label>Hasta</label>
+        <input type="date" class="filter-input" id="filt-to" value="${f.dateTo}">
+      </div>
+      <button class="btn-filter-reset" id="btn-filt-reset">Limpiar</button>
+    </div>
+  `;
+}
+
+function setupFilterListeners(type, rerender) {
+  const q = document.getElementById('filt-q');
+  const pri = document.getElementById('filt-pri');
+  const link = document.getElementById('filt-link');
+  const from = document.getElementById('filt-from');
+  const to = document.getElementById('filt-to');
+  const reset = document.getElementById('btn-filt-reset');
+
+  if (q) {
+    q.oninput = (e) => {
+      filters[type].q = e.target.value;
+      rerender();
+      const newQ = document.getElementById('filt-q');
+      if (newQ) {
+        newQ.focus();
+        newQ.setSelectionRange(newQ.value.length, newQ.value.length);
+      }
+    };
+  }
+
+  if (pri) pri.onchange = (e) => { filters[type].priority = e.target.value; rerender(); };
+  if (link) link.onchange = (e) => { filters[type].link = e.target.value; rerender(); };
+  if (from) from.onchange = (e) => { filters[type].dateFrom = e.target.value; rerender(); };
+  if (to) to.onchange = (e) => { filters[type].dateTo = e.target.value; rerender(); };
+  if (reset) reset.onclick = () => {
+    filters[type] = { q: '', priority: '', link: '', dateFrom: '', dateTo: '' };
+    rerender();
+  };
+}
+
 let selectedYear = new Date().getFullYear();
+
 
 function daysBadge(dateStr) {
   const d = getDaysUntil(dateStr);
@@ -1024,12 +1104,26 @@ function renderGarage() {
 function renderRevisiones() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('Revisiones'); return; }
-  const items = getRevisionesByVehicle(v.id);
+
+  // Apply filters
+  const f = filters.revisiones;
+  let items = getRevisionesByVehicle(v.id);
+  if (f.q) {
+    const q = f.q.toLowerCase();
+    items = items.filter(r => r.operacion.toLowerCase().includes(q) || (r.notas && r.notas.toLowerCase().includes(q)) || r.id.toLowerCase().includes(q));
+  }
+  if (f.priority) items = items.filter(r => r.prioridad === f.priority);
+  if (f.dateFrom) items = items.filter(r => r.fecha >= f.dateFrom);
+  if (f.dateTo) items = items.filter(r => r.fecha <= f.dateTo);
+
   const total = items.reduce((s, r) => s + parseFloat(r.coste || 0), 0);
   c.innerHTML = `
     <div class="page-header"><div><h1 class="page-title">Revisiones</h1><p class="page-sub">Mantenimiento Preventivo</p></div>
       <button class="btn btn-primary" id="btn-add-rev">+ Añadir Revisión</button></div>
-    ${!items.length ? emptySection('🔩', 'Sin revisiones registradas') : `
+    
+    ${renderFilterBar('revisiones')}
+
+    ${!items.length ? emptySection('🔩', 'Sin revisiones registradas o que coincidan con los filtros') : `
     <div class="table-wrap"><table class="data-table">
       <thead><tr><th>ID</th><th>Fecha</th><th>Prioridad</th><th>Operación</th><th>Km</th><th>Coste</th><th>Próxima</th><th>Estado</th><th></th></tr></thead>
       <tbody>${items.map(r => `<tr>
@@ -1045,7 +1139,11 @@ function renderRevisiones() {
       </tr>`).join('')}</tbody>
     </table></div>
     <div class="totals-bar"><span>Total en Revisiones</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+
+  setupFilterListeners('revisiones', renderRevisiones);
+
   document.getElementById('btn-add-rev').onclick = () => {
+
     openModal('Nueva Revisión / Factura', `<div class="form">
       <div class="form-row">
         <div class="form-group"><label>Operación Principal *</label><input id="rf-oper" class="form-input" placeholder="Ej: Cambio aceite"></div>
@@ -1098,12 +1196,26 @@ function renderRevisiones() {
 function renderAverias() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('Averías'); return; }
-  const items = getAveriasByVehicle(v.id);
+
+  // Apply filters
+  const f = filters.averias;
+  let items = getAveriasByVehicle(v.id);
+  if (f.q) {
+    const q = f.q.toLowerCase();
+    items = items.filter(a => a.sintomas.toLowerCase().includes(q) || (a.diagnostico && a.diagnostico.toLowerCase().includes(q)) || (a.solucion && a.solucion.toLowerCase().includes(q)) || a.id.toLowerCase().includes(q));
+  }
+  if (f.priority) items = items.filter(a => a.prioridad === f.priority);
+  if (f.dateFrom) items = items.filter(a => a.fecha >= f.dateFrom);
+  if (f.dateTo) items = items.filter(a => a.fecha <= f.dateTo);
+
   const total = items.reduce((s, a) => s + parseFloat(a.coste || 0), 0);
   c.innerHTML = `
     <div class="page-header"><div><h1 class="page-title">Averías</h1><p class="page-sub">Mantenimiento Correctivo</p></div>
       <button class="btn btn-primary" id="btn-add-ave">+ Nueva Avería</button></div>
-    ${!items.length ? emptySection('⚠️', 'Sin averías registradas') : `
+    
+    ${renderFilterBar('averias')}
+
+    ${!items.length ? emptySection('⚠️', 'Sin averías registradas o que coincidan con los filtros') : `
     <div class="table-wrap"><table class="data-table">
       <thead><tr><th>ID</th><th>Fecha</th><th>Prioridad</th><th>Síntomas</th><th>Diagnóstico</th><th>Solución</th><th>Coste</th><th></th></tr></thead>
       <tbody>${items.map(a => `<tr>
@@ -1116,7 +1228,11 @@ function renderAverias() {
       </tr>`).join('')}</tbody>
     </table></div>
     <div class="totals-bar"><span>Total en Averías</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+
+  setupFilterListeners('averias', renderAverias);
+
   document.getElementById('btn-add-ave').onclick = () => {
+
     openModal('Nueva Avería', `<div class="form">
       <div class="form-row">
         <div class="form-group"><label>Síntomas / Avería *</label><input id="af-sint" class="form-input" placeholder="Ej: Ruido al frenar"></div>
@@ -1173,7 +1289,28 @@ function renderAverias() {
 function renderRecambios() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('Recambios'); return; }
-  const items = getRecambiosByVehicle(v.id);
+
+  // Apply filters
+  const f = filters.recambios;
+  let items = getRecambiosByVehicle(v.id);
+  if (f.q) {
+    const q = f.q.toLowerCase();
+    items = items.filter(r => r.nombre.toLowerCase().includes(q) || (r.referencia && r.referencia.toLowerCase().includes(q)) || (r.tienda && r.tienda.toLowerCase().includes(q)) || r.id.toLowerCase().includes(q));
+  }
+  if (f.link) {
+    if (f.link === 'none') items = items.filter(r => !r.linkedTo);
+    else items = items.filter(r => r.linkedTo && r.linkedTo.type === f.link);
+  }
+  if (f.dateFrom || f.dateTo) {
+    items = items.filter(r => {
+      const date = r.id.split('-')[1] ? new Date(parseInt(r.id.split('-')[1], 36)).toISOString().split('T')[0] : null;
+      if (!date) return true;
+      if (f.dateFrom && date < f.dateFrom) return false;
+      if (f.dateTo && date > f.dateTo) return false;
+      return true;
+    });
+  }
+
   const total = items.reduce((s, r) => s + parseFloat(r.precio || 0), 0);
   const revOpts = getRevisionesByVehicle(v.id);
   const aveOpts = getAveriasByVehicle(v.id);
@@ -1186,7 +1323,10 @@ function renderRecambios() {
   c.innerHTML = `
     <div class="page-header"><div><h1 class="page-title">Recambios</h1><p class="page-sub">Inventario de Piezas</p></div>
       <button class="btn btn-primary" id="btn-add-rec">+ Añadir Recambio</button></div>
-    ${!items.length ? emptySection('📦', 'Sin recambios registrados') : `
+    
+    ${renderFilterBar('recambios')}
+
+    ${!items.length ? emptySection('📦', 'Sin recambios registrados o que coincidan con los filtros') : `
     <div class="table-wrap"><table class="data-table">
       <thead><tr><th>ID</th><th>Pieza</th><th>Marca / Ref.</th><th>Tienda</th><th>Precio</th><th>Vinculado a</th><th></th></tr></thead>
       <tbody>${items.map(r => `<tr>
@@ -1200,7 +1340,11 @@ function renderRecambios() {
       </tr>`).join('')}</tbody>
     </table></div>
     <div class="totals-bar"><span>Total en Recambios</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+
+  setupFilterListeners('recambios', renderRecambios);
+
   document.getElementById('btn-add-rec').onclick = () => {
+
     const linkOpts = [
       '<option value="">Sin vínculo</option>',
       ...revOpts.map(r => `<option value="revision|${r.id}">Revisión: ${r.operacion} (${fmt.date(r.fecha)})</option>`),

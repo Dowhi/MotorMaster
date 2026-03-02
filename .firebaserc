@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "motormaster-app-999"
+  },
   "targets": {},
   "etags": {}
 }
