@@ -453,8 +453,14 @@ function openSaleReport(vid) {
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/app.css">
     <style>
-      body { background: #0A1322 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .report-table { width: 100%; border-collapse: collapse; display: table !important; }
+      body { background: #0A1322 !important; color: white !important; font-family: 'Roboto', sans-serif !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .report-table { 
+          width: 100% !important; 
+          border-collapse: collapse !important; 
+          display: table !important; 
+          table-layout: fixed !important; 
+          margin-bottom: 30px !important;
+      }
       .report-table thead { display: table-header-group !important; }
       .report-table tr { display: table-row !important; background: transparent !important; }
       .report-table th, .report-table td { 
@@ -462,7 +468,9 @@ function openSaleReport(vid) {
         padding: 12px 15px !important; 
         border-bottom: 1px solid #334155 !important; 
         text-align: left;
+        color: white !important;
       }
+      .report-table td::before { content: none !important; } /* Kill 'data-label' mobile stacks */
       .report-table th { 
         background: #1E293B !important; 
         color: #94A3B8 !important; 
@@ -470,9 +478,18 @@ function openSaleReport(vid) {
         font-size: 0.75rem; 
       }
       .priority-tag { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
-      .pri-high { background: rgba(236,72,153,0.2); color: #ec4899; }
-      .pri-mid { background: rgba(245,158,11,0.2); color: #f59e0b; }
-      .pri-low { background: rgba(34,197,94,0.2); color: #22c55e; }
+      .pri-high { background: rgba(236,72,153,0.2) !important; color: #ec4899 !important; }
+      .pri-mid { background: rgba(245,158,11,0.2) !important; color: #f59e0b !important; }
+      .pri-low { background: rgba(34,197,94,0.2) !important; color: #22c55e !important; }
+      
+      @media print {
+        body { background: white !important; color: black !important; }
+        .report-table th, .report-table td { border-bottom: 1px solid #ddd !important; color: black !important; }
+        .report-table th { background: #f1f5f9 !important; color: #475569 !important; }
+        .vehicle-hero { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; color: black !important; }
+        h1, h2, h3 { color: black !important; }
+        p { color: #64748b !important; }
+      }
     </style></head><body>${html}</body></html>`);
   setTimeout(() => win.print(), 500);
 }
@@ -1167,84 +1184,99 @@ function renderRevisiones() {
         <td data-label="Coste" class="gasto">${fmt.currency(r.coste)}</td>
         <td data-label="Próxima">${fmt.date(r.proximaFecha)}</td>
         <td data-label="Estado">${daysBadge(r.proximaFecha)}</td>
-        <td><button class="btn btn-danger btn-xs" data-delete="revisiones" data-id="${r.id}">✕</button></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-secondary btn-xs" data-edit="revisiones" data-id="${r.id}" title="Editar">✎</button>
+          <button class="btn btn-danger btn-xs" data-delete="revisiones" data-id="${r.id}" title="Eliminar">✕</button>
+        </td>
       </tr>`).join('')}</tbody>
     </table></div>
     <div class="totals-bar"><span>Total en Revisiones</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
 
   setupFilterListeners('revisiones', renderRevisiones);
+  document.getElementById('btn-add-rev').onclick = () => openRevisionModal(null, renderRevisiones);
+  setupDeleteBtns(renderRevisiones);
+  setupEditBtns(renderRevisiones);
+}
 
-  document.getElementById('btn-add-rev').onclick = () => {
+function openRevisionModal(id = null, rerender) {
+  const v = getActiveVehicle();
+  const s = getState();
+  const isEdit = id !== null;
+  const data = isEdit ? s.revisiones.find(r => r.id === id) : null;
 
-    openModal('Nueva Revisión / Factura', `<div class="form">
-      <div class="form-row">
-        <div class="form-group"><label>Operación Principal *</label><input id="rf-oper" class="form-input" placeholder="Ej: Cambio aceite"></div>
-        <div class="form-group"><label>Km actuales *</label><input id="rf-km" type="number" class="form-input" value="${v.km}"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Fecha *</label><input id="rf-fecha" type="date" class="form-input" value="${fmt.today()}"></div>
-        <div class="form-group"><label>Prioridad</label><select id="rf-pri" class="form-input"><option>Baja</option><option>Media</option><option>Alta</option></select></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Próxima Revisión (Fecha)</label><input id="rf-prox-f" type="date" class="form-input"></div>
-        <div class="form-group"><label>Coste Final (€)</label><input id="rf-coste" type="number" class="form-input" readonly></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Taller / Comercio</label><input id="rf-taller" class="form-input" placeholder="Nombre del taller"></div>
-        <div class="form-group"><label>Nº Factura</label><input id="rf-fact" class="form-input" placeholder="Ref. factura"></div>
-      </div>
-      <div class="form-group"><label>Forma de Pago</label>
-        <select id="rf-pago" class="form-input">
-          <option value="Tarjeta">Tarjeta</option>
-          <option value="Efectivo">Efectivo</option>
-          <option value="Transferencia">Transferencia</option>
-          <option value="Bizum">Bizum</option>
-        </select>
-      </div>
-      
-      <!-- Invoice concepts -->
-      <div class="invoice-items-wrap">
-        <table class="invoice-table">
-          <thead><tr><th>Ref</th><th>Descripción</th><th class="col-qty">Cant.</th><th class="col-price">Precio</th><th class="col-dto">Dto%</th><th class="col-total">Importe</th><th></th></tr></thead>
-          <tbody id="invoice-body"></tbody>
-        </table>
-        <div class="invoice-footer">
-          <button class="btn btn-ghost btn-sm" id="btn-add-concept">+ Añadir Concepto</button>
-          <div class="invoice-totals">
-            <div class="total-line"><span>Subtotal:</span><span id="inv-sub">0,00 €</span></div>
-            <div class="total-line"><span>I.V.A. (21%):</span><span id="inv-iva">0,00 €</span></div>
-            <div class="total-line total-final"><span>TOTAL:</span><span id="inv-total-text">0,00 €</span></div>
-          </div>
+  openModal(isEdit ? 'Editar Revisión' : 'Nueva Revisión / Factura', `<div class="form">
+    <div class="form-row">
+      <div class="form-group"><label>Operación Principal *</label><input id="rf-oper" class="form-input" placeholder="Ej: Cambio aceite" value="${data ? data.operacion : ''}"></div>
+      <div class="form-group"><label>Km actuales *</label><input id="rf-km" type="number" class="form-input" value="${data ? data.km : v.km}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha *</label><input id="rf-fecha" type="date" class="form-input" value="${data ? data.fecha : fmt.today()}"></div>
+      <div class="form-group"><label>Prioridad</label><select id="rf-pri" class="form-input">
+        <option ${data && data.prioridad === 'Baja' ? 'selected' : ''}>Baja</option>
+        <option ${data && data.prioridad === 'Media' ? 'selected' : ''}>Media</option>
+        <option ${data && data.prioridad === 'Alta' ? 'selected' : ''}>Alta</option>
+      </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Próxima Revisión (Fecha)</label><input id="rf-prox-f" type="date" class="form-input" value="${data ? data.proximaFecha : ''}"></div>
+      <div class="form-group"><label>Coste Final (€)</label><input id="rf-coste" type="number" class="form-input" value="${data ? data.coste : ''}" readonly></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Taller / Comercio</label><input id="rf-taller" class="form-input" placeholder="Nombre del taller" value="${data ? (data.taller || '') : ''}"></div>
+      <div class="form-group"><label>Nº Factura</label><input id="rf-fact" class="form-input" placeholder="Ref. factura" value="${data ? (data.factura || '') : ''}"></div>
+    </div>
+    <div class="form-group"><label>Forma de Pago</label>
+      <select id="rf-pago" class="form-input">
+        <option value="Tarjeta" ${data && data.formaPago === 'Tarjeta' ? 'selected' : ''}>Tarjeta</option>
+        <option value="Efectivo" ${data && data.formaPago === 'Efectivo' ? 'selected' : ''}>Efectivo</option>
+        <option value="Transferencia" ${data && data.formaPago === 'Transferencia' ? 'selected' : ''}>Transferencia</option>
+        <option value="Bizum" ${data && data.formaPago === 'Bizum' ? 'selected' : ''}>Bizum</option>
+      </select>
+    </div>
+    
+    <!-- Invoice concepts -->
+    <div class="invoice-items-wrap">
+      <table class="invoice-table">
+        <thead><tr><th>Ref</th><th>Descripción</th><th class="col-qty">Cant.</th><th class="col-price">Precio</th><th class="col-dto">Dto%</th><th class="col-total">Importe</th><th></th></tr></thead>
+        <tbody id="invoice-body"></tbody>
+      </table>
+      <div class="invoice-footer">
+        <button class="btn btn-ghost btn-sm" id="btn-add-concept">+ Añadir Concepto</button>
+        <div class="invoice-totals">
+          <div class="total-line"><span>Subtotal:</span><span id="inv-sub">0,00 €</span></div>
+          <div class="total-line"><span>I.V.A. (21%):</span><span id="inv-iva">0,00 €</span></div>
+          <div class="total-line total-final"><span>TOTAL:</span><span id="inv-total-text">0,00 €</span></div>
         </div>
       </div>
+    </div>
 
-      <div class="form-group"><label>Notas</label><textarea id="rf-notas" class="form-input form-textarea" placeholder="Observaciones adicionales..."></textarea></div>
-      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-rev">Registrar</button></div>
-    </div>`);
-    setupInvoiceLogic();
-    document.getElementById('btn-save-rev').onclick = () => {
-      const fecha = document.getElementById('rf-fecha').value;
-      const oper = document.getElementById('rf-oper').value.trim();
-      const coste = document.getElementById('rf-coste').value;
-      if (!fecha || !oper || coste === '') { alert('Completa los campos obligatorios (*)'); return; }
-      const km = document.getElementById('rf-km').value;
-      addRevision({
-        operacion: oper,
-        km: parseFloat(km),
-        fecha,
-        coste: parseFloat(coste),
-        proximaFecha: document.getElementById('rf-prox-f').value,
-        prioridad: document.getElementById('rf-pri').value,
-        notas: document.getElementById('rf-notas').value.trim(),
-        taller: document.getElementById('rf-taller').value.trim(),
-        factura: document.getElementById('rf-fact').value.trim(),
-        formaPago: document.getElementById('rf-pago').value
-      });
-      updateVehicleKm(v.id, parseFloat(km));
-      closeModal(); renderRevisiones(); renderAlertBanner(v.id); showToast('Revisión registrada — Gasto actualizado');
+    <div class="form-group"><label>Notas</label><textarea id="rf-notas" class="form-input form-textarea" placeholder="Observaciones adicionales...">${data ? (data.notas || '') : ''}</textarea></div>
+    <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-rev">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
+  </div>`);
+
+  setupInvoiceLogic(); // No recuperamos conceptos factura por ahora (es una mejora futura)
+
+  document.getElementById('btn-save-rev').onclick = () => {
+    const fields = {
+      fecha: document.getElementById('rf-fecha').value,
+      operacion: document.getElementById('rf-oper').value.trim(),
+      coste: parseFloat(document.getElementById('rf-coste').value),
+      km: parseFloat(document.getElementById('rf-km').value),
+      proximaFecha: document.getElementById('rf-prox-f').value,
+      prioridad: document.getElementById('rf-pri').value,
+      notas: document.getElementById('rf-notas').value.trim(),
+      taller: document.getElementById('rf-taller').value.trim(),
+      factura: document.getElementById('rf-fact').value.trim(),
+      formaPago: document.getElementById('rf-pago').value
     };
+    if (!fields.fecha || !fields.operacion || isNaN(fields.coste)) { alert('Completa los campos obligatorios (*)'); return; }
+
+    if (isEdit) updateRevision(id, fields);
+    else addRevision(fields);
+
+    updateVehicleKm(v.id, fields.km);
+    closeModal(); rerender(); renderAlertBanner(v.id); showToast(isEdit ? 'Revisión actualizada' : 'Revisión registrada');
   };
-  setupDeleteBtns(renderRevisiones);
 }
 
 /* ======================== AVERIAS ======================== */
@@ -1279,80 +1311,96 @@ function renderAverias() {
         <td data-label="Prioridad">${priorityBadge(a.prioridad)}</td>
         <td data-label="Síntomas"><strong>${a.sintomas}</strong><br><small class="text-muted">${a.taller || ''} ${a.factura ? `| Fact: ${a.factura}` : ''}</small></td><td data-label="Diagnóstico">${a.diagnostico || '—'}</td><td data-label="Solución">${a.solucion || '—'}</td>
         <td data-label="Coste" class="gasto">${fmt.currency(a.coste)}</td>
-        <td><button class="btn btn-danger btn-xs" data-delete="averias" data-id="${a.id}">✕</button></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-secondary btn-xs" data-edit="averias" data-id="${a.id}" title="Editar">✎</button>
+          <button class="btn btn-danger btn-xs" data-delete="averias" data-id="${a.id}" title="Eliminar">✕</button>
+        </td>
       </tr>`).join('')}</tbody>
     </table></div>
     <div class="totals-bar"><span>Total en Averías</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
 
   setupFilterListeners('averias', renderAverias);
+  document.getElementById('btn-add-ave').onclick = () => openAveriaModal(null, renderAverias);
+  setupDeleteBtns(renderAverias);
+  setupEditBtns(renderAverias);
+}
 
-  document.getElementById('btn-add-ave').onclick = () => {
+function openAveriaModal(id = null, rerender) {
+  const v = getActiveVehicle();
+  const s = getState();
+  const isEdit = id !== null;
+  const data = isEdit ? s.averias.find(a => a.id === id) : null;
 
-    openModal('Nueva Avería', `<div class="form">
-      <div class="form-row">
-        <div class="form-group"><label>Síntomas / Avería *</label><input id="af-sint" class="form-input" placeholder="Ej: Ruido al frenar"></div>
-        <div class="form-group"><label>Fecha *</label><input id="af-fecha" type="date" class="form-input" value="${fmt.today()}"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Prioridad</label><select id="af-pri" class="form-input"><option>Baja</option><option>Media</option><option>Alta</option></select></div>
-        <div class="form-group"><label>Coste Final (€)</label><input id="af-coste" type="number" class="form-input" readonly></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Taller / Comercio</label><input id="af-taller" class="form-input" placeholder="Nombre del taller"></div>
-        <div class="form-group"><label>Nº Factura</label><input id="af-fact" class="form-input" placeholder="Ref. factura"></div>
-      </div>
-      <div class="form-group"><label>Forma de Pago</label>
-        <select id="af-pago" class="form-input">
-          <option value="Tarjeta">Tarjeta</option>
-          <option value="Efectivo">Efectivo</option>
-          <option value="Transferencia">Transferencia</option>
-          <option value="Bizum">Bizum</option>
-        </select>
-      </div>
-      
-      <!-- Invoice concepts -->
-      <div class="invoice-items-wrap">
-        <table class="invoice-table">
-          <thead><tr><th>Ref</th><th>Descripción</th><th class="col-qty">Cant.</th><th class="col-price">Precio</th><th class="col-dto">Dto%</th><th class="col-total">Importe</th><th></th></tr></thead>
-          <tbody id="invoice-body"></tbody>
-        </table>
-        <div class="invoice-footer">
-          <button class="btn btn-ghost btn-sm" id="btn-add-concept">+ Añadir Concepto</button>
-          <div class="invoice-totals">
-            <div class="total-line"><span>Subtotal:</span><span id="inv-sub">0,00 €</span></div>
-            <div class="total-line"><span>I.V.A. (21%):</span><span id="inv-iva">0,00 €</span></div>
-            <div class="total-line total-final"><span>TOTAL:</span><span id="inv-total-text">0,00 €</span></div>
-          </div>
+  openModal(isEdit ? 'Editar Avería' : 'Nueva Avería', `<div class="form">
+    <div class="form-row">
+      <div class="form-group"><label>Síntomas / Avería *</label><input id="af-sint" class="form-input" placeholder="Ej: Ruido al frenar" value="${data ? data.sintomas : ''}"></div>
+      <div class="form-group"><label>Fecha *</label><input id="af-fecha" type="date" class="form-input" value="${data ? data.fecha : fmt.today()}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Prioridad</label><select id="af-pri" class="form-input">
+        <option ${data && data.prioridad === 'Baja' ? 'selected' : ''}>Baja</option>
+        <option ${data && data.prioridad === 'Media' ? 'selected' : ''}>Media</option>
+        <option ${data && data.prioridad === 'Alta' ? 'selected' : ''}>Alta</option>
+      </select></div>
+      <div class="form-group"><label>Coste Final (€)</label><input id="af-coste" type="number" class="form-input" value="${data ? data.coste : ''}" readonly></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Taller / Comercio</label><input id="af-taller" class="form-input" placeholder="Nombre del taller" value="${data ? (data.taller || '') : ''}"></div>
+      <div class="form-group"><label>Nº Factura</label><input id="af-fact" class="form-input" placeholder="Ref. factura" value="${data ? (data.factura || '') : ''}"></div>
+    </div>
+    <div class="form-group"><label>Forma de Pago</label>
+      <select id="af-pago" class="form-input">
+        <option value="Tarjeta" ${data && data.formaPago === 'Tarjeta' ? 'selected' : ''}>Tarjeta</option>
+        <option value="Efectivo" ${data && data.formaPago === 'Efectivo' ? 'selected' : ''}>Efectivo</option>
+        <option value="Transferencia" ${data && data.formaPago === 'Transferencia' ? 'selected' : ''}>Transferencia</option>
+        <option value="Bizum" ${data && data.formaPago === 'Bizum' ? 'selected' : ''}>Bizum</option>
+      </select>
+    </div>
+    
+    <!-- Invoice concepts -->
+    <div class="invoice-items-wrap">
+      <table class="invoice-table">
+        <thead><tr><th>Ref</th><th>Descripción</th><th class="col-qty">Cant.</th><th class="col-price">Precio</th><th class="col-dto">Dto%</th><th class="col-total">Importe</th><th></th></tr></thead>
+        <tbody id="invoice-body"></tbody>
+      </table>
+      <div class="invoice-footer">
+        <button class="btn btn-ghost btn-sm" id="btn-add-concept">+ Añadir Concepto</button>
+        <div class="invoice-totals">
+          <div class="total-line"><span>Subtotal:</span><span id="inv-sub">0,00 €</span></div>
+          <div class="total-line"><span>I.V.A. (21%):</span><span id="inv-iva">0,00 €</span></div>
+          <div class="total-line total-final"><span>TOTAL:</span><span id="inv-total-text">0,00 €</span></div>
         </div>
       </div>
+    </div>
 
-      <div class="form-row">
-        <div class="form-group"><label>Diagnóstico</label><input id="af-diag" class="form-input" placeholder="Causa del problema"></div>
-        <div class="form-group"><label>Solución / Reparación</label><input id="af-sol" class="form-input" placeholder="Qué se ha reparado"></div>
-      </div>
-      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-ave">Registrar</button></div>
-    </div>`);
-    setupInvoiceLogic();
-    document.getElementById('btn-save-ave').onclick = () => {
-      const fecha = document.getElementById('af-fecha').value;
-      const sint = document.getElementById('af-sint').value.trim();
-      const coste = document.getElementById('af-coste').value;
-      if (!fecha || !sint || coste === '') { alert('Completa los campos obligatorios (*)'); return; }
-      addAveria({
-        sintomas: sint,
-        fecha,
-        coste: parseFloat(coste),
-        diagnostico: document.getElementById('af-diag').value.trim(),
-        solucion: document.getElementById('af-sol').value.trim(),
-        prioridad: document.getElementById('af-pri').value,
-        taller: document.getElementById('af-taller').value.trim(),
-        factura: document.getElementById('af-fact').value.trim(),
-        formaPago: document.getElementById('af-pago').value
-      });
-      closeModal(); renderAverias(); showToast('Avería registrada — Gasto actualizado');
+    <div class="form-row">
+      <div class="form-group"><label>Diagnóstico</label><input id="af-diag" class="form-input" placeholder="Causa del problema" value="${data ? (data.diagnostico || '') : ''}"></div>
+      <div class="form-group"><label>Solución / Reparación</label><input id="af-sol" class="form-input" placeholder="Qué se ha reparado" value="${data ? (data.solucion || '') : ''}"></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-ave">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
+  </div>`);
+
+  setupInvoiceLogic();
+
+  document.getElementById('btn-save-ave').onclick = () => {
+    const fields = {
+      sintomas: document.getElementById('af-sint').value.trim(),
+      fecha: document.getElementById('af-fecha').value,
+      coste: parseFloat(document.getElementById('af-coste').value),
+      diagnostico: document.getElementById('af-diag').value.trim(),
+      solucion: document.getElementById('af-sol').value.trim(),
+      prioridad: document.getElementById('af-pri').value,
+      taller: document.getElementById('af-taller').value.trim(),
+      factura: document.getElementById('af-fact').value.trim(),
+      formaPago: document.getElementById('af-pago').value
     };
+    if (!fields.fecha || !fields.sintomas || isNaN(fields.coste)) { alert('Completa los campos obligatorios (*)'); return; }
+
+    if (isEdit) updateAveria(id, fields);
+    else addAveria(fields);
+
+    closeModal(); rerender(); showToast(isEdit ? 'Avería actualizada' : 'Avería registrada');
   };
-  setupDeleteBtns(renderAverias);
 }
 
 /* ======================== RECAMBIOS ======================== */
@@ -1406,94 +1454,103 @@ function renderRecambios() {
         <td data-label="Tienda">${r.tienda || '—'}<br><small class="text-muted">${r.factura ? `Fact: ${r.factura}` : ''}</small></td>
         <td data-label="Precio" class="gasto">${fmt.currency(r.precio)}</td>
         <td data-label="Vinculado">${linkedLabel(r)}</td>
-        <td><button class="btn btn-danger btn-xs" data-delete="recambios" data-id="${r.id}">✕</button></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-secondary btn-xs" data-edit="recambios" data-id="${r.id}" title="Editar">✎</button>
+          <button class="btn btn-danger btn-xs" data-delete="recambios" data-id="${r.id}" title="Eliminar">✕</button>
+        </td>
       </tr>`).join('')}</tbody>
     </table></div>
     <div class="totals-bar"><span>Total en Recambios</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
 
   setupFilterListeners('recambios', renderRecambios);
+  document.getElementById('btn-add-rec').onclick = () => openRecambioModal(null, renderRecambios);
+  setupDeleteBtns(renderRecambios);
+  setupEditBtns(renderRecambios);
+}
 
-  document.getElementById('btn-add-rec').onclick = () => {
+function openRecambioModal(id = null, rerender) {
+  const v = getActiveVehicle();
+  const s = getState();
+  const isEdit = id !== null;
+  const data = isEdit ? s.recambios.find(r => r.id === id) : null;
 
-    const linkOpts = [
-      '<option value="">Sin vínculo</option>',
-      ...revOpts.map(r => `<option value="revision|${r.id}">Revisión: ${r.operacion} (${fmt.date(r.fecha)})</option>`),
-      ...aveOpts.map(a => `<option value="averia|${a.id}">Avería: ${fmt.date(a.fecha)} — ${a.sintomas.substring(0, 30)}</option>`)
-    ].join('');
-    openModal('Nuevo Recambio / Factura', `<div class="form">
-      <div class="form-row">
-        <div class="form-group"><label>Tienda / Proveedor *</label><input id="rr-tienda" class="form-input" placeholder="Ej: Amazon, Oscaro, Taller Pepe"></div>
-        <div class="form-group"><label>Coste Final (€)</label><input id="rr-precio" type="number" class="form-input" readonly></div>
+  const revOpts = getRevisionesByVehicle(v.id);
+  const aveOpts = getAveriasByVehicle(v.id);
+  const linkOpts = [
+    '<option value="">Sin vínculo</option>',
+    ...revOpts.map(r => `<option value="revision|${r.id}" ${data && data.linkedTo && data.linkedTo.id === r.id ? 'selected' : ''}>Revisión: ${r.operacion} (${fmt.date(r.fecha)})</option>`),
+    ...aveOpts.map(a => `<option value="averia|${a.id}" ${data && data.linkedTo && data.linkedTo.id === a.id ? 'selected' : ''}>Avería: ${fmt.date(a.fecha)} — ${a.sintomas.substring(0, 30)}</option>`)
+  ].join('');
+
+  openModal(isEdit ? 'Editar Recambio' : 'Nuevo Recambio / Factura', `<div class="form">
+    <div class="form-row">
+      <div class="form-group"><label>Tienda / Proveedor *</label><input id="rr-tienda" class="form-input" placeholder="Ej: Amazon, Oscaro, Taller Pepe" value="${data ? data.tienda : ''}"></div>
+      <div class="form-group"><label>Coste Final (€)</label><input id="rr-precio" type="number" class="form-input" value="${data ? data.precio : ''}" readonly></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Nº Factura</label><input id="rr-fact" class="form-input" placeholder="Ref. factura" value="${data ? (data.factura || '') : ''}"></div>
+      <div class="form-group"><label>Forma de Pago</label>
+        <select id="rr-pago" class="form-input">
+          <option value="Tarjeta" ${data && data.formaPago === 'Tarjeta' ? 'selected' : ''}>Tarjeta</option>
+          <option value="Efectivo" ${data && data.formaPago === 'Efectivo' ? 'selected' : ''}>Efectivo</option>
+          <option value="Transferencia" ${data && data.formaPago === 'Transferencia' ? 'selected' : ''}>Transferencia</option>
+          <option value="Bizum" ${data && data.formaPago === 'Bizum' ? 'selected' : ''}>Bizum</option>
+        </select>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Nº Factura</label><input id="rr-fact" class="form-input" placeholder="Ref. factura"></div>
-        <div class="form-group"><label>Forma de Pago</label>
-          <select id="rr-pago" class="form-input">
-            <option value="Tarjeta">Tarjeta</option>
-            <option value="Efectivo">Efectivo</option>
-            <option value="Transferencia">Transferencia</option>
-            <option value="Bizum">Bizum</option>
-          </select>
+    </div>
+    <div class="form-group"><label>Vincular a</label><select id="rr-link" class="form-input">${linkOpts}</select></div>
+
+    <!-- Invoice concepts -->
+    <div class="invoice-items-wrap">
+      <table class="invoice-table">
+        <thead><tr><th>Ref</th><th>Descripción</th><th class="col-qty">Cant.</th><th class="col-price">Precio</th><th class="col-dto">Dto%</th><th class="col-total">Importe</th><th></th></tr></thead>
+        <tbody id="invoice-body"></tbody>
+      </table>
+      <div class="invoice-footer">
+        <button class="btn btn-ghost btn-sm" id="btn-add-concept">+ Añadir Concepto</button>
+        <div class="invoice-totals">
+          <div class="total-line"><span>Subtotal:</span><span id="inv-sub">0,00 €</span></div>
+          <div class="total-line"><span>I.V.A. (21%):</span><span id="inv-iva">0,00 €</span></div>
+          <div class="total-line total-final"><span>TOTAL:</span><span id="inv-total-text">0,00 €</span></div>
         </div>
       </div>
-      <div class="form-group"><label>Vincular a</label><select id="rr-link" class="form-input">${linkOpts}</select></div>
+    </div>
 
-      <!-- Invoice concepts -->
-      <div class="invoice-items-wrap">
-        <table class="invoice-table">
-          <thead><tr><th>Ref</th><th>Descripción</th><th class="col-qty">Cant.</th><th class="col-price">Precio</th><th class="col-dto">Dto%</th><th class="col-total">Importe</th><th></th></tr></thead>
-          <tbody id="invoice-body"></tbody>
-        </table>
-        <div class="invoice-footer">
-          <button class="btn btn-ghost btn-sm" id="btn-add-concept">+ Añadir Concepto</button>
-          <div class="invoice-totals">
-            <div class="total-line"><span>Subtotal:</span><span id="inv-sub">0,00 €</span></div>
-            <div class="total-line"><span>I.V.A. (21%):</span><span id="inv-iva">0,00 €</span></div>
-            <div class="total-line total-final"><span>TOTAL:</span><span id="inv-total-text">0,00 €</span></div>
-          </div>
-        </div>
-      </div>
+    <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-rec">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
+  </div>`);
 
-      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-rec">Registrar</button></div>
-    </div>`);
-    setupInvoiceLogic();
-    document.getElementById('btn-save-rec').onclick = () => {
-      const tienda = document.getElementById('rr-tienda').value.trim();
+  setupInvoiceLogic();
+
+  document.getElementById('btn-save-rec').onclick = () => {
+    const tienda = document.getElementById('rr-tienda').value.trim();
+    const precio = parseFloat(document.getElementById('rr-precio').value);
+    const lv = document.getElementById('rr-link').value;
+    const linkedTo = lv ? { type: lv.split('|')[0], id: lv.split('|')[1] } : null;
+    const factura = document.getElementById('rr-fact').value.trim();
+    const formaPago = document.getElementById('rr-pago').value;
+
+    if (!tienda || isNaN(precio)) { alert('Completa la tienda y los importes'); return; }
+
+    const fields = { nombre: data ? data.nombre : 'Recambio editado', referencia: data ? data.referencia : '', tienda, precio, linkedTo, factura, formaPago };
+
+    // Si es edición de recambio, lo simplificamos a actualizar el objeto (los subconceptos no se editan individualmente aun)
+    if (isEdit) updateRecambio(id, fields);
+    else {
+      // Si es nuevo, usamos la lógica de múltiples filas del invoice
       const rows = document.getElementById('invoice-body').querySelectorAll('tr');
-      if (!tienda || !rows.length) { alert('Completa la tienda y añade al menos un concepto'); return; }
-
-      const factura = document.getElementById('rr-fact').value.trim();
-      const formaPago = document.getElementById('rr-pago').value;
-      const lv = document.getElementById('rr-link').value;
-      const linkedTo = lv ? { type: lv.split('|')[0], id: lv.split('|')[1] } : null;
-
       rows.forEach(tr => {
         const ref = tr.querySelector('.inv-ref').value.trim();
         const desc = tr.querySelector('.inv-desc').value.trim();
-        if (!desc) return;
-        const q = parseFloat(tr.querySelector('.inv-qty').value) || 0;
-        const p = parseFloat(tr.querySelector('.inv-price').value) || 0;
-        const d = parseFloat(tr.querySelector('.inv-dto').value) || 0;
-
-        // El precio ingresado ya incluye el IVA en la nueva lógica del usuario
-        // pero para el registro individual de recambios, seguimos guardando el total por item
-        const itemTotal = (q * p) * (1 - d / 100);
-
-        addRecambio({
-          nombre: desc,
-          referencia: ref,
-          tienda: tienda,
-          precio: itemTotal, // Guardamos el importe final del item
-          linkedTo,
-          factura,
-          formaPago
-        });
+        const qty = parseFloat(tr.querySelector('.inv-qty').value) || 0;
+        const prc = parseFloat(tr.querySelector('.inv-price').value) || 0;
+        const dto = parseFloat(tr.querySelector('.inv-dto').value) || 0;
+        const itemTotal = qty * prc * (1 - dto / 100);
+        addRecambio({ nombre: desc, referencia: ref, tienda, precio: itemTotal, linkedTo, factura, formaPago });
       });
+    }
 
-      closeModal(); renderRecambios(); showToast('Factura registrada — Conceptos añadidos');
-    };
+    closeModal(); rerender(); showToast(isEdit ? 'Recambio actualizado' : 'Recambios registrados');
   };
-  setupDeleteBtns(renderRecambios);
 }
 
 /* ======================== ITV ======================== */
@@ -2005,6 +2062,16 @@ function setupDeleteBtns(rerender) {
     deleteRecord(b.dataset.delete, b.dataset.id);
     rerender();
     showToast('Registro eliminado');
+  });
+}
+
+function setupEditBtns(rerender) {
+  document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
+    const col = b.dataset.edit;
+    const id = b.dataset.id;
+    if (col === 'revisiones') openRevisionModal(id, rerender);
+    if (col === 'averias') openAveriaModal(id, rerender);
+    if (col === 'recambios') openRecambioModal(id, rerender);
   });
 }
 

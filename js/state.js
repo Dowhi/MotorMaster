@@ -192,6 +192,15 @@ function addRevision(data) {
   addGasto(_state.activeVehicleId, data.coste);
   saveState(); return r;
 }
+function updateRevision(id, data) {
+  const idx = _state.revisiones.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const old = _state.revisiones[idx];
+  const v = _state.vehicles.find(v => v.id === old.vehicleId);
+  if (v) v.gastoTotal = (parseFloat(v.gastoTotal) || 0) - (parseFloat(old.coste) || 0) + (parseFloat(data.coste) || 0);
+  _state.revisiones[idx] = { ...old, ...data };
+  saveState();
+}
 function getRevisionesByVehicle(vid) { return _state.revisiones.filter(r => r.vehicleId === vid); }
 
 /* ---- AVERIAS ---- */
@@ -201,6 +210,15 @@ function addAveria(data) {
   addGasto(_state.activeVehicleId, data.coste);
   saveState(); return a;
 }
+function updateAveria(id, data) {
+  const idx = _state.averias.findIndex(a => a.id === id);
+  if (idx === -1) return;
+  const old = _state.averias[idx];
+  const v = _state.vehicles.find(v => v.id === old.vehicleId);
+  if (v) v.gastoTotal = (parseFloat(v.gastoTotal) || 0) - (parseFloat(old.coste) || 0) + (parseFloat(data.coste) || 0);
+  _state.averias[idx] = { ...old, ...data };
+  saveState();
+}
 function getAveriasByVehicle(vid) { return _state.averias.filter(a => a.vehicleId === vid); }
 
 /* ---- RECAMBIOS ---- */
@@ -209,6 +227,15 @@ function addRecambio(data) {
   _state.recambios.push(r);
   addGasto(_state.activeVehicleId, data.precio);
   saveState(); return r;
+}
+function updateRecambio(id, data) {
+  const idx = _state.recambios.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const old = _state.recambios[idx];
+  const v = _state.vehicles.find(v => v.id === old.vehicleId);
+  if (v) v.gastoTotal = (parseFloat(v.gastoTotal) || 0) - (parseFloat(old.precio) || 0) + (parseFloat(data.precio) || 0);
+  _state.recambios[idx] = { ...old, ...data };
+  saveState();
 }
 function getRecambiosByVehicle(vid) { return _state.recambios.filter(r => r.vehicleId === vid); }
 
