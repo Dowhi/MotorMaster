@@ -449,7 +449,20 @@ function openSaleReport(vid) {
     </div>
   `;
   const win = window.open('', '_blank');
-  win.document.write(`<html><head><title>Informe de Venta - ${v.matricula || v.modelo}</title><link rel="stylesheet" href="css/tokens.css"><link rel="stylesheet" href="css/app.css"><style>body { background: #0A1322 !important; color: white !important; } .data-table th { background: #1E293B !important; }</style></head><body>${html}</body></html>`);
+  win.document.write(`<html><head><title>Informe de Venta - ${v.matricula || v.modelo}</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/app.css">
+    <style>
+      body { background: #0A1322 !important; color: white !important; }
+      .data-table th { background: #1E293B !important; color: #94A3B8 !important; }
+      /* Forzar estilo de tabla real incluso en pantallas pequeñas para el reporte */
+      @media screen {
+        .data-table thead { display: table-header-group !important; }
+        .data-table tr { display: table-row !important; background: transparent !important; margin: 0 !important; border: none !important; }
+        .data-table td { display: table-cell !important; border-bottom: 1px solid #334155 !important; padding: 12px 15px !important; }
+        .data-table td::before { display: none !important; }
+      }
+    </style></head><body>${html}</body></html>`);
   setTimeout(() => win.print(), 500);
 }
 

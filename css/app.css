@@ -426,12 +426,12 @@ body.retro-mode .sidebar {
     border: 1px solid var(--clr-border);
     border-radius: var(--r-card);
     box-shadow: var(--shadow-card);
-    margin-bottom: var(--sp-xl);
+    margin-bottom: var(--sp-md);
     overflow: hidden;
 }
 
 .card-header {
-    padding: var(--sp-lg) var(--sp-xl);
+    padding: var(--sp-md) var(--sp-xl);
     border-bottom: 1px solid var(--clr-border);
     display: flex;
     justify-content: space-between;
@@ -439,7 +439,7 @@ body.retro-mode .sidebar {
 }
 
 .card-body {
-    padding: var(--sp-xl);
+    padding: var(--sp-lg) var(--sp-xl);
 }
 
 /* Vehicle Card Details Grid */
@@ -1010,17 +1010,22 @@ input[type=number] {
 
     .data-table tr {
         display: block;
-        margin-bottom: 15px;
+        margin-bottom: 8px;
+        /* Reducido de 15px */
         border: 1px solid var(--clr-border);
         border-radius: 10px;
         background: var(--clr-surface-2);
+        padding: 4px 0;
+        /* Más compacto */
     }
 
     .data-table td {
         display: flex;
         justify-content: space-between;
         border: none;
-        padding: 10px;
+        padding: 5px 12px;
+        /* Reducido de 10px */
+        font-size: 0.9rem;
     }
 
     .data-table td::before {
@@ -1342,25 +1347,37 @@ body.workshop-mode .vehicle-hero {
     display: flex;
     align-items: center;
     gap: var(--sp-sm);
-    background: rgba(255, 255, 255, 0.03);
-    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 6px 14px;
     border-radius: 99px;
     border: 1px solid var(--clr-border);
 }
 
+.filter-group:focus-within {
+    border-color: var(--clr-accent);
+}
+
 .filter-group label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--clr-text-muted);
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--clr-accent);
+    /* Cambiado de muted a accent para visibilidad */
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .filter-input {
-    background: transparent;
-    border: none;
-    color: white;
+    background: transparent !important;
+    border: none !important;
+    color: white !important;
     font-size: 0.85rem;
     outline: none;
+    padding: 2px 0;
+}
+
+.filter-input[type="date"] {
+    color-scheme: dark;
+    /* Mejora visibilidad de picker en navegadores modernos */
 }
 
 .filter-input::placeholder {
