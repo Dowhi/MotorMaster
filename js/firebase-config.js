@@ -14,10 +14,10 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Habilitar persistencia offline
-db.enablePersistence().catch(err => {
+// Habilitar persistencia offline con soporte multi-pestaña
+db.enablePersistence({ synchronizeTabs: true }).catch(err => {
     if (err.code == 'failed-precondition') {
-        console.warn("Persistencia fallida: Múltiples pestañas abiertas");
+        console.warn("Persistencia fallida: Múltiples pestañas abiertas sin sincronización");
     } else if (err.code == 'unimplemented') {
         console.warn("Persistencia no soportada por el navegador");
     }

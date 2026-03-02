@@ -484,6 +484,8 @@ function renderDashboard() {
     return sum + items.reduce((s, r) => s + parseFloat(r[c.f] || 0), 0);
   }, 0);
 
+  const monthlySaving = (totalGastoYear / 12).toFixed(2);
+
   const costRowsYear = cats.map(c => {
     const items = state[c.col].filter(r => r.vehicleId === vid && (!c.filter || c.filter(r)) && (r.fecha || r.fechaVencimiento || r.fechaRenovacion || '').startsWith(filterYear));
     const total = items.reduce((s, r) => s + parseFloat(r[c.f] || 0), 0);
