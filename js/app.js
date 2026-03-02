@@ -737,7 +737,7 @@ function renderSettings() {
           <div class="space-y-3">
             <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Vehículo Principal</label>
             <div class="relative">
-              <select class="w-full bg-primary/5 border border-primary/10 rounded-lg px-4 py-3 text-sm font-bold appearance-none focus:outline-none focus:ring-1 ring-primary/30" onchange="setMainVehicle(this.value); renderSettings();">
+              <select class="w-full bg-primary/5 border border-primary/10 rounded-lg px-4 py-3 text-sm font-bold appearance-none focus:outline-none focus:ring-1 ring-primary/30" onchange="setMainVehicle(this.value); router();">
                 ${s.vehicles.map(v_ => `<option value="${v_.id}" ${s.mainVehicleId === v_.id ? 'selected' : ''} class="bg-[#161616] text-white">${v_.marca} ${v_.modelo} (${v_.matricula || 'S/M'})</option>`).join('')}
               </select>
               <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-lg">expand_more</span>

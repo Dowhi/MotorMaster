@@ -114,7 +114,11 @@ function resetState(newState) {
   saveState();
 }
 
-function setMainVehicle(vid) { _state.mainVehicleId = vid; saveState(); }
+function setMainVehicle(vid) {
+  _state.mainVehicleId = vid;
+  _state.activeVehicleId = vid;
+  saveState();
+}
 function setAccentColor(color) {
   _state.accentColor = color;
   document.documentElement.style.setProperty('--clr-accent', color);
