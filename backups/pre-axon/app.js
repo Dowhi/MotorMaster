@@ -405,7 +405,7 @@ function renderRevisiones() {
         <td><button class="btn btn-danger btn-xs" data-delete="revisiones" data-id="${r.id}">✕</button></td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="totals-bar"><span>Total en Revisiones</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+    <div class="totals-bar"><span>Total en Revisiones  </span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
   document.getElementById('btn-add-rev').onclick = () => {
     openModal('Nueva Revisión / Factura', `<div class="form">
       <div class="form-row">
@@ -476,7 +476,7 @@ function renderAverias() {
         <td><button class="btn btn-danger btn-xs" data-delete="averias" data-id="${a.id}">✕</button></td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="totals-bar"><span>Total en Averías</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+    <div class="totals-bar"><span>Total en Averías  </span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
   document.getElementById('btn-add-ave').onclick = () => {
     openModal('Nueva Avería', `<div class="form">
       <div class="form-row">
@@ -560,7 +560,7 @@ function renderRecambios() {
         <td><button class="btn btn-danger btn-xs" data-delete="recambios" data-id="${r.id}">✕</button></td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="totals-bar"><span>Total en Recambios</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+    <div class="totals-bar"><span>Total en Recambios </span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
   document.getElementById('btn-add-rec').onclick = () => {
     const linkOpts = [
       '<option value="">Sin vínculo</option>',
