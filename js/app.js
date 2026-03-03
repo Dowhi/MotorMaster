@@ -657,7 +657,7 @@ function renderDashboard() {
 
     <div class="summary-grid">
       <div class="card summary-card"><div class="summary-icon">💸</div><div class="summary-data"><div class="summary-value">${fmt.currency(totalGastoYear)}</div><div class="summary-label">Gastos Año ${filterYear}</div></div></div>
-      <div class="card summary-card"><div class="summary-icon">🧪</div><div class="summary-data"><div class="summary-value">${monthlySaving} € <small>/mes</small></div><div class="summary-label">Ahorro Recomendado (U7)</div></div></div>
+      <div class="card summary-card"><div class="summary-icon">🧪</div><div class="summary-data"><div class="summary-value">${monthlySaving} € <small>/mes</small></div><div class="summary-label">Ahorro Recomendado</div></div></div>
       <div class="card summary-card${pending.length ? ' card-warning' : ''}"><div class="summary-icon">📋</div><div class="summary-data"><div class="summary-value${pending.length ? ' text-warning' : ''}">${pending.length}</div><div class="summary-label">Multas Pend.</div></div></div>
     </div>
 
@@ -665,7 +665,7 @@ function renderDashboard() {
       <div class="card">
         <div class="card-header"><span>🔔 Alertas (30d)</span><span class="badge ${alerts.length ? 'badge-danger' : 'badge-success'}">${alerts.length || 'OK'}</span></div>
         <div class="card-body">
-          ${alerts.length ? alerts.map(a => `<div class="alert-row alert-row-${a.type}"><span>${a.days <= 0 ? '🚨' : '⚠️'} ${a.message}</span><span class="alert-days">${a.days <= 0 ? 'HOY' : a.days + 'd'}</span></div>`).join('') : '<div class="empty-mini">Todo al día 🎉</div>'}
+          ${alerts.length ? alerts.map(a => `<div class="alert-row alert-row-${a.type}"><span>${a.days <= 0 ? '🚨' : '⚠️'} ${a.message}</span> <span class="alert-days">${a.days <= 0 ? 'HOY' : a.days + 'd'}</span></div>`).join('') : '<div class="empty-mini">Todo al día 🎉</div>'}
         </div>
       </div>
       <div class="card">
