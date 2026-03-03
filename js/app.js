@@ -556,7 +556,7 @@ function renderDashboard() {
   const recs = getRecambiosByVehicle(vid);
   const multas = getMultasByVehicle(vid);
   const pending = multas.filter(m => m.estado === 'Pendiente');
-  const alerts = collectAlerts(vid);
+  const alerts = collectAlerts(vid, null);
 
   const filterYear = selectedYear.toString();
   const cats = [
@@ -1222,7 +1222,6 @@ function renderRevisiones() {
         <td data-label="Operación"><strong>${r.operacion}</strong><br><small class="text-muted">${r.taller || ''} ${r.factura ? `| Fact: ${r.factura}` : ''}</small>${r.notas ? `<br><small class="text-muted">${r.notas}</small>` : ''}</td>
         <td data-label="Km">${fmt.km(r.km)}</td>
         <td data-label="Coste" class="gasto">${fmt.currency(r.coste)}</td>
-        <td data-label="Próxima">${fmt.date(r.proximaFecha)}</td>
         <td data-label="Próxima">${fmt.date(r.proximaFecha)}</td>
         <td class="text-right" style="white-space:nowrap">
           <div class="flex gap-2 justify-end">
@@ -2022,7 +2021,7 @@ function renderCalendar() {
   const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const allAlerts = [];
   vehicles.forEach(v => {
-    collectAlerts(v.id).forEach(a => {
+    collectAlerts(v.id, null).forEach(a => {
       const d = new Date(a.date + 'T00:00:00');
       allAlerts.push({ ...a, vName: `${v.icono || '🚗'} ${v.marca}`, month: d.getMonth(), day: d.getDate(), year: d.getFullYear() });
     });
@@ -2048,7 +2047,7 @@ function renderCalendar() {
 function updateGlobalAlertBadge() {
   const badge = document.getElementById('global-alert-count');
   if (!badge) return;
-  const allAlerts = collectAllGlobalAlerts();
+  const allAlerts = collectAllGlobalAlerts(null);
   const count = allAlerts.length;
   if (count > 0) {
     badge.textContent = count;
@@ -2060,7 +2059,7 @@ function updateGlobalAlertBadge() {
 
 function renderGlobalAlerts() {
   const c = document.getElementById('main-content');
-  const alerts = collectAllGlobalAlerts();
+  const alerts = collectAllGlobalAlerts(null);
 
   c.innerHTML = `
     <div class="page-header">

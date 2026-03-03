@@ -7,14 +7,13 @@ function getDaysUntil(dateStr) {
     return Math.ceil((target - now) / 86400000);
 }
 
-function collectAlerts(vehicleId) {
+function collectAlerts(vehicleId, threshold = 30) {
     const state = getState();
     const alerts = [];
-    const THRESHOLD = 30;
 
     function pushAlert(message, dateStr) {
         const days = getDaysUntil(dateStr);
-        if (days !== null && days <= THRESHOLD) {
+        if (days !== null && (threshold === null || days <= threshold)) {
             alerts.push({ message, days, date: dateStr, type: days <= 7 ? 'danger' : 'warning' });
         }
     }
@@ -60,11 +59,11 @@ function getVehicleHealth(vehicleId) {
     if (alerts.some(a => a.type === 'danger' || a.days < 0)) return 'danger';
     return 'warn';
 }
-function collectAllGlobalAlerts() {
+function collectAllGlobalAlerts(threshold = 30) {
     const { vehicles } = getState();
     const allAlerts = [];
     vehicles.forEach(v => {
-        const vehicleAlerts = collectAlerts(v.id).map(a => ({
+        const vehicleAlerts = collectAlerts(v.id, threshold).map(a => ({
             ...a,
             vehicleId: v.id,
             vehicleName: `${v.icono || '🚗'} ${v.marca}`
