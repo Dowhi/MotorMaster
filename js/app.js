@@ -1264,7 +1264,7 @@ function renderRevisiones() {
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="totals-bar"><span>Total en Revisiones</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+    <div class="totals-bar"><span>Total en Revisiones  </span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
 
   setupFilterListeners('revisiones', renderRevisiones);
   document.getElementById('btn-add-rev').onclick = () => openRevisionModal(null, renderRevisiones);
@@ -1398,7 +1398,7 @@ function renderAverias() {
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="totals-bar"><span>Total en Averías</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+    <div class="totals-bar"><span>Total en Averías  </span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
 
   setupFilterListeners('averias', renderAverias);
   document.getElementById('btn-add-ave').onclick = () => openAveriaModal(null, renderAverias);
@@ -1556,7 +1556,7 @@ function renderRecambios() {
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="totals-bar"><span>Total en Recambios</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+    <div class="totals-bar"><span>Total en Recambios </span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
 
   setupFilterListeners('recambios', renderRecambios);
   document.getElementById('btn-add-rec').onclick = () => openRecambioModal(null, renderRecambios);
