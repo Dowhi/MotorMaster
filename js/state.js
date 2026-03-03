@@ -338,6 +338,15 @@ function addOtro(data) {
   saveState(); return o;
 }
 function getOtrosByVehicle(vid) { return _state.otros.filter(o => o.vehicleId === vid); }
+function updateOtro(id, data) {
+  const idx = _state.otros.findIndex(o => o.id === id);
+  if (idx === -1) return;
+  const old = _state.otros[idx];
+  const v = _state.vehicles.find(v => v.id === old.vehicleId);
+  if (v) v.gastoTotal = (parseFloat(v.gastoTotal) || 0) - (parseFloat(old.importe) || 0) + (parseFloat(data.importe) || 0);
+  _state.otros[idx] = { ...old, ...data };
+  saveState();
+}
 
 /* ---- DOCUMENTOS ---- */
 function addDocumento(data) {
@@ -345,6 +354,13 @@ function addDocumento(data) {
   _state.documentos.push(d); saveState(); return d;
 }
 function getDocsByVehicle(vid) { return _state.documentos.filter(d => d.vehicleId === vid); }
+function updateDocumento(id, data) {
+  const idx = _state.documentos.findIndex(d => d.id === id);
+  if (idx !== -1) {
+    _state.documentos[idx] = { ..._state.documentos[idx], ...data };
+    saveState();
+  }
+}
 
 /* User 6: Viajes */
 function addTripChecklist(data) {

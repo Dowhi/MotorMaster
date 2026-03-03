@@ -312,13 +312,17 @@ function renderTripChecklist() {
           <span style="${t.checks[i] ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${it}</span>
         </label>`).join('')}
       </div>
-      <button class="btn btn-danger btn-xs btn-ghost" style="margin-top:10px;" onclick="deleteRecord('viajes','${t.id}'); renderTripChecklist();">✕ Borrar Viaje</button>
+      <div style="margin-top:10px; width:100%; display: flex; gap: 8px;">
+        <button class="btn btn-secondary btn-xs btn-ghost" data-edit="viajes" data-id="${t.id}" title="Editar Destino">✎ Editar</button>
+        <button class="btn btn-danger btn-xs btn-ghost" onclick="deleteRecord('viajes','${t.id}'); renderTripChecklist();">✕ Borrar Viaje</button>
+      </div>
     </div>`).join('')}</div>`;
 
   document.getElementById('btn-add-trip').onclick = () => {
     const dest = prompt('Destino del viaje:');
     if (dest) { addTripChecklist({ destino: dest, fecha: fmt.today() }); renderTripChecklist(); }
   };
+  setupEditBtns(renderTripChecklist);
   document.querySelectorAll('.check-item input').forEach(inp => {
     inp.onchange = (e) => {
       updateTripCheck(e.target.dataset.tid, e.target.dataset.idx, e.target.checked);
@@ -351,6 +355,7 @@ function renderGuantera() {
           <p style="font-size: 0.75rem; color: var(--clr-text-muted); margin-bottom: 12px;">${d.categoria} • ${fmt.date(d.fechaSubida)}</p>
           <div style="display: flex; gap: 8px;">
             <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="viewDocument('${d.id}')">Ver</button>
+            <button class="btn btn-secondary btn-sm" data-edit="documentos" data-id="${d.id}" title="Editar">✎</button>
             <button class="btn btn-danger btn-sm" onclick="deleteRecord('documentos','${d.id}'); renderGuantera();">✕</button>
           </div>
         </div>
@@ -358,41 +363,57 @@ function renderGuantera() {
     </div>`}
   `;
 
-  document.getElementById('btn-add-doc').onclick = () => {
-    openModal('Registrar Documento', `<div class="form space-y-4">
-      <div class="form-group">
-        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Nombre del Documento *</label>
-        <input id="doc-name" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 ring-primary/30" placeholder="Ej: Permiso de Circulación">
-      </div>
-      <div class="form-group">
-        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Categoría</label>
-        <select id="doc-cat" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 ring-primary/30 appearance-none">
-          <option value="Propiedad / Compra" class="bg-slate-900">Propiedad / Compra</option>
-          <option value="Seguro / Póliza" class="bg-slate-900">Seguro / Póliza</option>
-          <option value="Ficha Técnica / ITV" class="bg-slate-900">Ficha Técnica / ITV</option>
-          <option value="Impuesto Circulación" class="bg-slate-900">Impuesto Circulación</option>
-          <option value="Otros" class="bg-slate-900">Otros</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Archivo (Imagen o PDF) *</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="file" id="doc-file" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-2 py-2 text-xs text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30" accept="image/*,application/pdf" capture="environment">
-        </div>
-        <p class="text-[10px] text-slate-500 italic mt-1.5">Máximo 2MB recomendado para asegurar el guardado.</p>
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" id="btn-save-doc">Guardar Documento</button>
-      </div>
-    </div>`);
+  document.getElementById('btn-add-doc').onclick = () => openDocumentoModal(null, renderGuantera);
+  setupEditBtns(renderGuantera);
+}
 
-    document.getElementById('btn-save-doc').onclick = async (btnEvt) => {
-      const name = document.getElementById('doc-name').value.trim();
-      const cat = document.getElementById('doc-cat').value;
+function openDocumentoModal(id = null, rerender) {
+  const isEdit = id !== null;
+  const data = isEdit ? getState().documentos.find(d => d.id === id) : null;
+
+  openModal(isEdit ? 'Editar Documento' : 'Registrar Documento', `<div class="form space-y-4">
+    <div class="form-group">
+      <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Nombre del Documento *</label>
+      <input id="doc-name" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 ring-primary/30" placeholder="Ej: Permiso de Circulación" value="${data ? data.nombre : ''}">
+    </div>
+    <div class="form-group">
+      <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Categoría</label>
+      <select id="doc-cat" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 ring-primary/30 appearance-none">
+        <option value="Propiedad / Compra" ${data?.categoria === 'Propiedad / Compra' ? 'selected' : ''}>Propiedad / Compra</option>
+        <option value="Seguro / Póliza" ${data?.categoria === 'Seguro / Póliza' ? 'selected' : ''}>Seguro / Póliza</option>
+        <option value="Ficha Técnica / ITV" ${data?.categoria === 'Ficha Técnica / ITV' ? 'selected' : ''}>Ficha Técnica / ITV</option>
+        <option value="Impuesto Circulación" ${data?.categoria === 'Impuesto Circulación' ? 'selected' : ''}>Impuesto Circulación</option>
+        <option value="Otros" ${data?.categoria === 'Otros' ? 'selected' : ''}>Otros</option>
+      </select>
+    </div>
+    ${!isEdit ? `
+    <div class="form-group">
+      <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Archivo (Imagen o PDF) *</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="file" id="doc-file" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-2 py-2 text-xs text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30" accept="image/*,application/pdf" capture="environment">
+      </div>
+      <p class="text-[10px] text-slate-500 italic mt-1.5">Máximo 2MB recomendado para asegurar el guardado.</p>
+    </div>` : ''}
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-doc">${isEdit ? 'Actualizar' : 'Guardar Documento'}</button>
+    </div>
+  </div>`);
+
+  document.getElementById('btn-save-doc').onclick = async (btnEvt) => {
+    const name = document.getElementById('doc-name').value.trim();
+    const cat = document.getElementById('doc-cat').value;
+    const btn = btnEvt.target;
+
+    if (isEdit) {
+      if (!name) { alert('Completa los campos obligatorios'); return; }
+      updateDocumento(id, { nombre: name, categoria: cat });
+      closeModal();
+      rerender();
+      showToast('Documento actualizado correctamente');
+    } else {
       const fileInput = document.getElementById('doc-file');
       const file = fileInput.files[0];
-      const btn = btnEvt.target;
       const user = firebase.auth().currentUser;
 
       if (!name || !file) { alert('Completa los campos obligatorios'); return; }
@@ -403,17 +424,12 @@ function renderGuantera() {
 
       try {
         let fileDataUrl = '';
-
         if (user) {
-          // Subida a Firebase Storage
           const storageRef = firebase.storage().ref(`users/${user.uid}/docs/${Date.now()}_${file.name}`);
           const snapshot = await storageRef.put(file);
           fileDataUrl = await snapshot.ref.getDownloadURL();
         } else {
-          // Fallback a Base64 local si no hay login
-          if (file.size > 2 * 1024 * 1024) {
-            throw new Error('Sin sesión, el archivo es demasiado grande (>2MB). Inicia sesión para subir archivos ilimitados.');
-          }
+          if (file.size > 2 * 1024 * 1024) throw new Error('Sin sesión, el archivo es demasiado grande (>2MB).');
           fileDataUrl = await new Promise((res, rej) => {
             const r = new FileReader();
             r.onload = e => res(e.target.result);
@@ -421,17 +437,9 @@ function renderGuantera() {
             r.readAsDataURL(file);
           });
         }
-
-        addDocumento({
-          nombre: name,
-          categoria: cat,
-          fileData: fileDataUrl,
-          fileType: file.type,
-          fechaSubida: fmt.today()
-        });
-
+        addDocumento({ nombre: name, categoria: cat, fileData: fileDataUrl, fileType: file.type, fechaSubida: fmt.today() });
         closeModal();
-        renderGuantera();
+        rerender();
         showToast('Documento guardado con éxito');
       } catch (err) {
         console.error(err);
@@ -439,7 +447,7 @@ function renderGuantera() {
         btn.textContent = originalText;
         btn.disabled = false;
       }
-    };
+    }
   };
 }
 
@@ -1644,7 +1652,7 @@ function renderITV() {
         <td data-label="Vencimiento">${fmt.date(i.fechaVencimiento)}</td>
         <td class="text-right" style="white-space:nowrap">
           <div class="flex gap-2 justify-end">
-            <button class="btn btn-secondary btn-xs" data-edit-itv="${i.id}" title="Editar">✎</button>
+            <button class="btn btn-secondary btn-xs" data-edit="itv" data-id="${i.id}" title="Editar">✎</button>
             <button class="btn btn-danger btn-xs" data-delete="itv" data-id="${i.id}">✕</button>
           </div>
         </td>
@@ -1652,8 +1660,8 @@ function renderITV() {
     </table></div>`}`;
 
   document.getElementById('btn-add-itv').onclick = () => openITVModal();
-  c.querySelectorAll('[data-edit-itv]').forEach(b => b.onclick = () => openITVModal(b.dataset.editItv));
   setupDeleteBtns(renderITV);
+  setupEditBtns(renderITV);
 }
 
 function openITVModal(id = null) {
@@ -1735,17 +1743,24 @@ function renderSeguro() {
         <td data-label="Vencimiento">${fmt.date(s.fechaVencimiento)}</td>
         <td data-label="Estado">${daysBadge(s.fechaVencimiento)}</td>
         <td class="text-right">
-          <div class="flex gap-1 justify-end">
-             <button class="btn btn-ghost btn-xs" data-edit-seg="${s.id}" title="Editar seguro" style="border:1px solid var(--clr-border)">✏️</button>
-             <button class="btn btn-danger btn-xs" data-delete="seguro" data-id="${s.id}">✕</button>
-          </div>
+            <div class="flex gap-2 justify-end">
+              <button class="btn btn-ghost btn-xs" data-edit="seguro" data-id="${s.id}" title="Editar seguro" style="border:1px solid var(--clr-border)">✏️</button>
+              <button class="btn btn-danger btn-xs btn-ghost" data-delete="seguro" data-id="${s.id}" title="Eliminar póliza">✕</button>
+            </div>
         </td>
       </tr>`).join('')}</tbody>
-    </table></div>`}`;
+    </table></div>`}
+  `;
 
-  const showSeguroModal = (existingSeguro = null) => {
-    const isEdit = !!existingSeguro;
-    openModal(isEdit ? 'Editar Póliza de Seguro' : 'Registrar Nuevo Seguro', `<div class="form">
+  document.getElementById('btn-add-seg').onclick = () => showSeguroModal();
+  setupDeleteBtns(renderSeguro);
+  setupEditBtns(renderSeguro);
+}
+
+function showSeguroModal(existingSeguro = null) {
+  const v = getActiveVehicle();
+  const isEdit = !!existingSeguro;
+  openModal(isEdit ? 'Editar Póliza de Seguro' : 'Registrar Nuevo Seguro', `<div class="form">
       <div class="form-row">
         <div class="form-group"><label>Compañía Aseguradora *</label><input id="sg-comp" class="form-input" placeholder="Ej: Mapfre" value="${existingSeguro?.compania || ''}"></div>
         <div class="form-group"><label>Nº de Póliza</label><input id="sg-pol" class="form-input" placeholder="Nº Póliza..." value="${existingSeguro?.poliza || ''}"></div>
@@ -1773,42 +1788,33 @@ function renderSeguro() {
       <button class="btn btn-primary" id="btn-save-seg">${isEdit ? 'Guardar Cambios' : 'Registrar Seguro'}</button></div>
     </div>`);
 
-    document.getElementById('btn-save-seg').onclick = () => {
-      const comp = document.getElementById('sg-comp').value.trim();
-      const venc = document.getElementById('sg-venc').value;
-      const precio = document.getElementById('sg-precio').value;
+  document.getElementById('btn-save-seg').onclick = () => {
+    const comp = document.getElementById('sg-comp').value.trim();
+    const venc = document.getElementById('sg-venc').value;
+    const precio = document.getElementById('sg-precio').value;
 
-      if (!comp || !venc || precio === '') { alert('Completa los campos obligatorios (*)'); return; }
+    if (!comp || !venc || precio === '') { alert('Completa los campos obligatorios (*)'); return; }
 
-      const data = {
-        compania: comp,
-        poliza: document.getElementById('sg-pol').value.trim(),
-        tipoSG: document.getElementById('sg-tipo-sg').value,
-        tipoPol: document.getElementById('sg-tipo-pol').value.trim(),
-        fechaVencimiento: venc,
-        tipoPago: document.getElementById('sg-pago').value,
-        precio: parseFloat(precio)
-      };
-
-      if (isEdit) {
-        updateSeguro(existingSeguro.id, data);
-        showToast('Póliza actualizada correctamente');
-      } else {
-        addSeguro(data);
-        showToast('Póliza de seguro registrada — Gasto actualizado');
-      }
-
-      closeModal(); renderSeguro(); renderAlertBanner(v.id);
+    const data = {
+      compania: comp,
+      poliza: document.getElementById('sg-pol').value.trim(),
+      tipoSG: document.getElementById('sg-tipo-sg').value,
+      tipoPol: document.getElementById('sg-tipo-pol').value.trim(),
+      fechaVencimiento: venc,
+      tipoPago: document.getElementById('sg-pago').value,
+      precio: parseFloat(precio)
     };
+
+    if (isEdit) {
+      updateSeguro(existingSeguro.id, data);
+      showToast('Póliza actualizada correctamente');
+    } else {
+      addSeguro(data);
+      showToast('Póliza de seguro registrada — Gasto actualizado');
+    }
+
+    closeModal(); renderSeguro(); renderAlertBanner(v.id);
   };
-
-  document.getElementById('btn-add-seg').onclick = () => showSeguroModal();
-  c.querySelectorAll('[data-edit-seg]').forEach(b => b.onclick = () => {
-    const s = items.find(x => x.id === b.dataset.editSeg);
-    if (s) showSeguroModal(s);
-  });
-
-  setupDeleteBtns(renderSeguro);
 }
 
 /* ======================== MULTAS ======================== */
@@ -1852,7 +1858,7 @@ function renderMultas() {
         </td>
         <td class="text-right">
           <div class="flex gap-1 justify-end">
-            <button class="btn btn-ghost btn-xs" data-edit-mul="${m.id}" title="Editar multa" style="border:1px solid var(--clr-border)">✏️</button>
+            <button class="btn btn-ghost btn-xs" data-edit="multas" data-id="${m.id}" title="Editar multa" style="border:1px solid var(--clr-border)">✏️</button>
             <button class="btn btn-danger btn-xs" data-delete="multas" data-id="${m.id}">✕</button>
           </div>
         </td>
@@ -1863,9 +1869,37 @@ function renderMultas() {
       <span>Total Pagado: <strong class="gasto">${fmt.currency(totalPag)}</strong> &nbsp;|&nbsp; Deuda Pendiente: <strong style="color:var(--clr-warning)">${fmt.currency(totalPend)}</strong></span>
     </div>`}`;
 
-  const showMultaModal = (existingMulta = null) => {
-    const isEdit = !!existingMulta;
-    openModal(isEdit ? 'Editar Multa' : 'Registrar Multa / Denuncia', `<div class="form">
+  document.getElementById('btn-add-mul').onclick = () => showMultaModal();
+
+  c.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => {
+    const multaId = b.dataset.pay;
+    const m = items.find(x => x.id === multaId);
+    openModal('Registrar Pago', `<div class="form">
+        <p class="mb-4">Vas a marcar como pagada la denuncia <strong>${m.expediente}</strong>.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Importe Real Pagado (€) *</label><input id="mp-imp" type="number" class="form-input" value="${m.importe * 0.5}" step="0.01"></div>
+          <div class="form-group"><label>Fecha de Pago *</label><input id="mp-fecha" type="date" class="form-input" value="${fmt.today()}"></div>
+        </div>
+        <p class="text-[10px] text-slate-500 italic">Por defecto se aplica el 50% de descuento por pronto pago.</p>
+        <div class="form-actions mt-4"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-confirm-pay">Confirmar Pago</button></div>
+      </div>`);
+    document.getElementById('btn-confirm-pay').onclick = () => {
+      const imp = document.getElementById('mp-imp').value;
+      const fecha = document.getElementById('mp-fecha').value;
+      if (imp === '' || !fecha) return;
+      updateMultaEstado(multaId, 'Pagada', parseFloat(imp), fecha);
+      closeModal(); renderMultas(); showToast('Pago registrado — Gasto actualizado');
+    };
+  });
+
+  setupDeleteBtns(renderMultas);
+  setupEditBtns(renderMultas);
+}
+
+function showMultaModal(existingMulta = null) {
+  const v = getActiveVehicle();
+  const isEdit = !!existingMulta;
+  openModal(isEdit ? 'Editar Multa' : 'Registrar Multa / Denuncia', `<div class="form">
       <div class="form-row">
         <div class="form-group"><label>Nº Expediente *</label><input id="ml-exp" class="form-input" placeholder="Ej: 12.345.678-9" value="${existingMulta?.expediente || ''}"></div>
         <div class="form-group"><label>Fecha Denuncia *</label><input id="ml-fden" type="date" class="form-input" value="${existingMulta?.fechaDenuncia || fmt.today()}"></div>
@@ -1894,87 +1928,55 @@ function renderMultas() {
       <button class="btn btn-primary" id="btn-save-mul">${isEdit ? 'Guardar Cambios' : 'Registrar Multa'}</button></div>
     </div>`);
 
-    const estSel = document.getElementById('ml-estado');
-    const payDiv = document.getElementById('ml-pay-fields');
-    estSel.onchange = () => { payDiv.style.display = estSel.value === 'Pagada' ? 'block' : 'none'; };
+  const estSel = document.getElementById('ml-estado');
+  const payDiv = document.getElementById('ml-pay-fields');
+  estSel.onchange = () => { payDiv.style.display = estSel.value === 'Pagada' ? 'block' : 'none'; };
 
-    document.getElementById('btn-save-mul').onclick = () => {
-      const exp = document.getElementById('ml-exp').value.trim();
-      const fden = document.getElementById('ml-fden').value;
-      const hecho = document.getElementById('ml-hecho').value.trim();
-      const imp = document.getElementById('ml-imp').value;
+  document.getElementById('btn-save-mul').onclick = () => {
+    const exp = document.getElementById('ml-exp').value.trim();
+    const fden = document.getElementById('ml-fden').value;
+    const hecho = document.getElementById('ml-hecho').value.trim();
+    const imp = document.getElementById('ml-imp').value;
 
-      if (!exp || !fden || !hecho || imp === '') { alert('Completa los campos obligatorios (*)'); return; }
+    if (!exp || !fden || !hecho || imp === '') { alert('Completa los campos obligatorios (*)'); return; }
 
-      const estado = estSel.value;
-      const data = {
-        expediente: exp,
-        fechaDenuncia: fden,
-        provincia: document.getElementById('ml-prov').value.trim(),
-        estado,
-        hecho,
-        importe: parseFloat(imp),
-        fechaLimite: document.getElementById('ml-flim').value || '',
-        importePagado: 0,
-        fechaPago: ''
-      };
-
-      if (estado === 'Pagada') {
-        const impPag = document.getElementById('ml-imp-pag').value;
-        const fPag = document.getElementById('ml-fpag').value;
-        if (impPag === '' || !fPag) { alert('Indica el importe y la fecha del pago'); return; }
-        data.importePagado = parseFloat(impPag);
-        data.fechaPago = fPag;
-      }
-
-      if (isEdit) {
-        updateMulta(existingMulta.id, data);
-        showToast('Multa actualizada');
-      } else {
-        addMulta(data);
-        showToast('Sanción registrada correctamente');
-      }
-
-      closeModal(); renderMultas(); renderAlertBanner(v.id);
+    const estado = estSel.value;
+    const data = {
+      expediente: exp,
+      fechaDenuncia: fden,
+      provincia: document.getElementById('ml-prov').value.trim(),
+      estado,
+      hecho,
+      importe: parseFloat(imp),
+      fechaLimite: document.getElementById('ml-flim').value || '',
+      importePagado: 0,
+      fechaPago: ''
     };
+
+    if (estado === 'Pagada') {
+      const impPag = document.getElementById('ml-imp-pag').value;
+      const fPag = document.getElementById('ml-fpag').value;
+      if (impPag === '' || !fPag) { alert('Indica el importe y la fecha del pago'); return; }
+      data.importePagado = parseFloat(impPag);
+      data.fechaPago = fPag;
+    }
+
+    if (isEdit) {
+      updateMulta(existingMulta.id, data);
+      showToast('Multa actualizada');
+    } else {
+      addMulta(data);
+      showToast('Sanción registrada correctamente');
+    }
+
+    closeModal(); renderMultas(); renderAlertBanner(v.id);
   };
-
-  document.getElementById('btn-add-mul').onclick = () => showMultaModal();
-
-  c.querySelectorAll('[data-edit-mul]').forEach(b => b.onclick = () => {
-    const multaId = b.dataset.editMul;
-    const m = items.find(x => x.id === multaId);
-    if (m) showMultaModal(m);
-  });
-
-  c.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => {
-    const multaId = b.dataset.pay;
-    const m = items.find(x => x.id === multaId);
-    openModal('Registrar Pago', `<div class="form">
-      <p class="mb-4">Vas a marcar como pagada la denuncia <strong>${m.expediente}</strong>.</p>
-      <div class="form-row">
-        <div class="form-group"><label>Importe Real Pagado (€) *</label><input id="mp-imp" type="number" class="form-input" value="${m.importe * 0.5}" step="0.01"></div>
-        <div class="form-group"><label>Fecha de Pago *</label><input id="mp-fecha" type="date" class="form-input" value="${fmt.today()}"></div>
-      </div>
-      <p class="text-[10px] text-slate-500 italic">Por defecto se aplica el 50% de descuento por pronto pago.</p>
-      <div class="form-actions mt-4"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-confirm-pay">Confirmar Pago</button></div>
-    </div>`);
-    document.getElementById('btn-confirm-pay').onclick = () => {
-      const imp = document.getElementById('mp-imp').value;
-      const fecha = document.getElementById('mp-fecha').value;
-      if (imp === '' || !fecha) return;
-      updateMultaEstado(multaId, 'Pagada', parseFloat(imp), fecha);
-      closeModal(); renderMultas(); showToast('Pago registrado — Gasto actualizado');
-    };
-  });
-
-  setupDeleteBtns(renderMultas);
 }
 
 /* ======================== OTROS ======================== */
 function renderOtros() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
-  if (!v) { c.innerHTML = noVehicle('Otros'); return; }
+  if (!v) { c.innerHTML = noVehicle('Otros / Impuestos'); return; }
   const items = getOtrosByVehicle(v.id);
   const total = items.reduce((s, o) => s + parseFloat(o.importe || 0), 0);
   c.innerHTML = `
@@ -1982,35 +1984,54 @@ function renderOtros() {
       <button class="btn btn-primary" id="btn-add-otro">+ Añadir Registro</button></div>
     ${!items.length ? emptySection('📁', 'Sin registros adicionales') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>ID</th><th>Descripción</th><th>Importe</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>ID</th><th>Descripción</th><th>Importe</th><th>Vencimiento</th><th>Estado</th><th class="text-right">Acciones</th></tr></thead>
       <tbody>${items.map(o => `<tr>
         <td data-label="ID"><code class="id-code">${o.id}</code></td>
         <td data-label="Descripción"><strong>${o.descripcion}</strong></td>
         <td data-label="Importe" class="gasto">${fmt.currency(o.importe)}</td>
         <td data-label="Vencimiento">${fmt.date(o.fechaVencimiento)}</td>
         <td data-label="Estado">${daysBadge(o.fechaVencimiento)}</td>
-        <td><button class="btn btn-danger btn-xs" data-delete="otros" data-id="${o.id}">✕</button></td>
+        <td class="text-right">
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-secondary btn-xs" data-edit="otros" data-id="${o.id}" title="Editar">✎</button>
+            <button class="btn btn-danger btn-xs" data-delete="otros" data-id="${o.id}">✕</button>
+          </div>
+        </td>
       </tr>`).join('')}</tbody>
     </table></div>
     <div class="totals-bar"><span>Total en Otros</span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
-  document.getElementById('btn-add-otro').onclick = () => {
-    openModal('Nuevo Registro', `<div class="form">
-      <div class="form-group"><label>Descripción *</label><input id="ot-desc" class="form-input" placeholder="Ej: Impuesto de circulación"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Importe (€) *</label><input id="ot-imp" type="number" class="form-input" placeholder="0.00" step="0.01" min="0"></div>
-        <div class="form-group"><label>Fecha de vencimiento</label><input id="ot-venc" type="date" class="form-input"></div>
-      </div>
-      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-otro">Registrar</button></div>
-    </div>`);
-    document.getElementById('btn-save-otro').onclick = () => {
-      const desc = document.getElementById('ot-desc').value.trim();
-      const imp = document.getElementById('ot-imp').value;
-      if (!desc || imp === '') { alert('Completa los campos obligatorios (*)'); return; }
-      addOtro({ descripcion: desc, importe: parseFloat(imp), fechaVencimiento: document.getElementById('ot-venc').value });
-      closeModal(); renderOtros(); renderAlertBanner(v.id); showToast('Registro añadido — Gasto actualizado');
-    };
-  };
+
+  document.getElementById('btn-add-otro').onclick = () => openOtroModal(null, renderOtros);
   setupDeleteBtns(renderOtros);
+  setupEditBtns(renderOtros);
+}
+
+function openOtroModal(id = null, rerender) {
+  const v = getActiveVehicle();
+  const isEdit = id !== null;
+  const data = isEdit ? getState().otros.find(o => o.id === id) : null;
+
+  openModal(isEdit ? 'Editar Registro' : 'Nuevo Registro', `<div class="form">
+      <div class="form-group"><label>Descripción *</label><input id="ot-desc" class="form-input" placeholder="Ej: Impuesto de circulación" value="${data ? data.descripcion : ''}"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Importe (€) *</label><input id="ot-imp" type="number" class="form-input" placeholder="0.00" step="0.01" min="0" value="${data ? data.importe : ''}"></div>
+        <div class="form-group"><label>Fecha de vencimiento</label><input id="ot-venc" type="date" class="form-input" value="${data ? data.fechaVencimiento : ''}"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-otro">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
+    </div>`);
+
+  document.getElementById('btn-save-otro').onclick = () => {
+    const desc = document.getElementById('ot-desc').value.trim();
+    const imp = parseFloat(document.getElementById('ot-imp').value);
+    if (!desc || isNaN(imp)) { alert('Completa los campos obligatorios (*)'); return; }
+    const fields = { descripcion: desc, importe: imp, fechaVencimiento: document.getElementById('ot-venc').value };
+
+    if (isEdit) updateOtro(id, fields);
+    else addOtro(fields);
+
+    closeModal(); rerender(); renderAlertBanner(v.id);
+    showToast(isEdit ? 'Registro actualizado' : 'Registro añadido — Gasto actualizado');
+  };
 }
 
 
@@ -2175,6 +2196,20 @@ function setupEditBtns(rerender) {
     if (col === 'revisiones') openRevisionModal(id, rerender);
     if (col === 'averias') openAveriaModal(id, rerender);
     if (col === 'recambios') openRecambioModal(id, rerender);
+    if (col === 'itv') openITVModal(id);
+    if (col === 'seguro') showSeguroModal(getState().seguro.find(s => s.id === id));
+    if (col === 'multas') showMultaModal(getState().multas.find(m => m.id === id));
+    if (col === 'otros') openOtroModal(id, rerender);
+    if (col === 'documentos') openDocumentoModal(id, rerender);
+    if (col === 'viajes') {
+      const t = getState().viajes.find(v => v.id === id);
+      const newDest = prompt('Nuevo destino:', t.destino);
+      if (newDest) {
+        t.destino = newDest;
+        saveState();
+        if (typeof rerender === 'function') rerender();
+      }
+    }
   });
 }
 
