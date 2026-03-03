@@ -288,6 +288,7 @@ function router() {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route === route));
   renderUserProfile();
   renderVehicleSelector();
+  renderHeaderLicensePlate();
   renderAlertBanner(getActiveVehicle()?.id);
   updateGlobalAlertBadge();
   if (typeof checkAndNotifyCriticalAlerts === 'function') checkAndNotifyCriticalAlerts();
@@ -1025,6 +1026,30 @@ function renderVehicleSelector() {
     </div>`;
   document.getElementById('vsel-chip').onclick = () => document.getElementById('vsel-drop').classList.toggle('hidden');
   el.querySelectorAll('[data-vid]').forEach(o => o.onclick = () => { setActiveVehicle(o.dataset.vid); router(); });
+}
+
+function renderHeaderLicensePlate() {
+  const v = getActiveVehicle();
+  const el = document.getElementById('header-license-plate');
+  if (!el) return;
+  if (!v || !v.matricula) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const matricula = v.matricula.toUpperCase().trim();
+
+  el.innerHTML = `<svg width="520" height="110" viewBox="0 0 520 110" xmlns="http://www.w3.org/2000/svg">
+  <rect width="520" height="110" rx="5" fill="#0033CC" />
+  <rect x="1" y="1" width="518" height="108" rx="4" fill="none" stroke="#002288" stroke-width="1"/>
+  <rect x="0" y="0" width="45" height="110" rx="2" fill="#003399" />
+  <line x1="45" y1="5" x2="45" y2="105" stroke="white" stroke-width="1.5" opacity="0.8"/>
+  <circle cx="22.5" cy="35" r="12" fill="none" stroke="#FFCC00" stroke-width="2" stroke-dasharray="2 4.3" />
+  <text x="22.5" y="85" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="24" fill="white" text-anchor="middle">E</text>
+  <text x="285" y="82" font-family="Consolas, 'Courier New', monospace" font-weight="bold" font-size="90" fill="white" text-anchor="middle" letter-spacing="4">
+    ${matricula}
+  </text>
+</svg>`;
 }
 
 /* (Functions moved to top section or deleted as duplicates) */

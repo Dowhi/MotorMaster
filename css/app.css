@@ -70,6 +70,28 @@ body {
     align-items: center;
 }
 
+.header-license-plate {
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    margin: 0 10px;
+    opacity: 0.9;
+}
+
+.header-license-plate svg {
+    height: 100%;
+    width: auto;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.mobile-header .sidebar-logo {
+    padding-bottom: 0;
+    border-bottom: none;
+    font-size: 1rem;
+}
+
 .menu-toggle {
     font-size: 1.5rem;
     background: none;
