@@ -4,6 +4,7 @@
   --clr-surface: #1E293B;
   --clr-surface-2: #263348;
   --clr-border: #334155;
+  --color-scheme: dark;
   --clr-accent: #00C2E0;
   --clr-accent-dim: rgba(0, 194, 224, 0.12);
   --clr-accent-glow: rgba(0, 194, 224, 0.3);
@@ -46,4 +47,23 @@
   /* Sidebar */
   --sidebar-w: 260px;
   --topbar-h: 0px;
+}
+
+/* Modo Claro Override */
+html.light-mode {
+  --clr-bg: #F1F5F9;
+  --clr-surface: #FFFFFF;
+  --clr-surface-2: #F8FAFC;
+  --clr-border: #CBD5E1;
+  --clr-accent: #008496;
+  --clr-accent-dim: rgba(0, 132, 150, 0.1);
+  --clr-accent-glow: rgba(0, 132, 150, 0.2);
+
+  --clr-text: #0F172A;
+  --clr-text-2: #334155;
+  --clr-text-muted: #64748B;
+
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 8px 40px rgba(0, 0, 0, 0.15);
+  --color-scheme: light;
 }

@@ -2222,8 +2222,44 @@ document.addEventListener('click', e => {
   if (drop && !drop.classList.contains('hidden') && !e.target.closest('#vehicle-selector')) drop.classList.add('hidden');
 });
 
+// Theme Management
+function initTheme() {
+  const theme = localStorage.getItem('mm-theme') || 'dark';
+  applyTheme(theme);
+}
+
+function applyTheme(theme) {
+  const html = document.documentElement;
+  const themeIcon = document.getElementById('theme-icon');
+  const themeText = document.getElementById('theme-text');
+
+  if (theme === 'light') {
+    html.classList.add('light-mode');
+    html.classList.remove('dark');
+    if (themeIcon) themeIcon.textContent = '☀️';
+    if (themeText) themeText.textContent = 'Modo Claro';
+  } else {
+    html.classList.remove('light-mode');
+    html.classList.add('dark');
+    if (themeIcon) themeIcon.textContent = '🌙';
+    if (themeText) themeText.textContent = 'Modo Oscuro';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.classList.contains('light-mode') ? 'light' : 'dark';
+  const newTheme = current === 'light' ? 'dark' : 'light';
+  localStorage.setItem('mm-theme', newTheme);
+  applyTheme(newTheme);
+}
+
 // Search and Workshop listeners
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+
+  const themeBtn = document.getElementById('theme-toggle');
+  if (themeBtn) themeBtn.onclick = toggleTheme;
+
   const searchInput = document.getElementById('global-search');
   if (searchInput) {
     searchInput.oninput = (e) => globalSearch(e.target.value.trim());

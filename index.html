@@ -22,6 +22,19 @@
     rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
     rel="stylesheet">
+  <script>
+    // Theme setup (prevent flash)
+    (function () {
+      const theme = localStorage.getItem('mm-theme') || 'dark';
+      if (theme === 'light') {
+        document.documentElement.classList.add('light-mode');
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light-mode');
+      }
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script>
     tailwind.config = {
@@ -45,10 +58,18 @@
   <link rel="stylesheet" href="css/reset.css">
   <link rel="stylesheet" href="css/app.css">
   <style type="text/tailwindcss">
+    :root {
+      --clr-glass: rgba(22, 22, 22, 0.6);
+      --clr-glass-border: rgba(0, 229, 255, 0.06);
+    }
+    html.light-mode {
+      --clr-glass: rgba(255, 255, 255, 0.7);
+      --clr-glass-border: rgba(0, 229, 255, 0.15);
+    }
     .glass-card {
-        background: rgba(22, 22, 22, 0.6);
+        background: var(--clr-glass);
         backdrop-filter: blur(12px);
-        border: 1px solid rgba(0, 229, 255, 0.06);
+        border: 1px solid var(--clr-glass-border);
     }
     .eyebrow-title {
         @apply text-[9px] font-black text-primary/70 uppercase tracking-[0.25em] mb-1.5 ml-1;
@@ -155,11 +176,28 @@
           <span class="nav-icon">❓</span><span>Ayuda</span>
         </a>
       </footer>
+
+      <!-- Theme Toggle -->
+      <div class="px-4 mt-auto mb-4">
+        <button id="theme-toggle"
+          class="flex items-center gap-3 w-full p-2.5 rounded-xl border border-[--clr-border] hover:bg-[--clr-surface-2] transition-all group">
+          <div
+            class="w-8 h-8 rounded-lg bg-[--clr-surface-2] group-hover:bg-[--clr-accent-dim] flex items-center justify-center transition-colors">
+            <span id="theme-icon" class="text-base">🌙</span>
+          </div>
+          <div class="flex flex-col items-start">
+            <span id="theme-text-top" class="text-[10px] font-bold uppercase tracking-wider text-muted">Tema</span>
+            <span id="theme-text" class="text-xs font-semibold">Modo Oscuro</span>
+          </div>
+        </button>
+      </div>
+
     </aside>
 
     <!-- ===== MAIN CONTENT ===== -->
     <main class="main-content" id="main-content">
       <!-- Rendered dynamically by router -->
+
     </main>
 
   </div><!-- /.app-shell -->

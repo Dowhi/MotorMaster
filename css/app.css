@@ -506,7 +506,7 @@ body.retro-mode .sidebar {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     padding: var(--sp-md);
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--clr-surface-2);
 }
 
 .compact-item {
@@ -550,7 +550,7 @@ body.retro-mode .sidebar {
 
 /* Vehicle Hero */
 .vehicle-hero {
-    background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+    background: linear-gradient(135deg, var(--clr-surface) 0%, var(--clr-bg) 100%);
     padding: var(--sp-xxl);
     border-radius: var(--r-card);
     border: 1px solid var(--clr-border);
@@ -674,9 +674,9 @@ body.retro-mode .sidebar {
 }
 
 .interval-item input {
-    background: #0F172A;
+    background: var(--clr-bg);
     border: 1px solid var(--clr-border);
-    color: #F8FAFC;
+    color: var(--clr-text);
     padding: 8px;
     border-radius: var(--r-sm);
     font-family: inherit;
@@ -702,29 +702,29 @@ body.retro-mode .sidebar {
 }
 
 .form-input {
-    background: #0F172A !important;
+    background: var(--clr-bg) !important;
     border: 1px solid var(--clr-border) !important;
     padding: 12px !important;
     border-radius: 8px !important;
-    color: #FFFFFF !important;
+    color: var(--clr-text) !important;
     font-family: inherit !important;
     font-size: 1rem !important;
     width: 100% !important;
 }
 
 .form-input::placeholder {
-    color: rgba(255, 255, 255, 0.4) !important;
+    color: var(--clr-text-muted) !important;
 }
 
 .form-input:focus {
     border-color: var(--clr-accent) !important;
     outline: none !important;
-    background: #1e293b !important;
+    background: var(--clr-surface) !important;
 }
 
 select.form-input option {
-    background: #0F172A;
-    color: white;
+    background: var(--clr-surface);
+    color: var(--clr-text);
 }
 
 .form-actions {
@@ -767,7 +767,7 @@ select.form-input option {
     width: 100%;
     background: transparent;
     border: none;
-    color: white;
+    color: var(--clr-text);
     font-size: inherit;
 }
 
@@ -1369,14 +1369,14 @@ body.workshop-mode .vehicle-hero {
 .filter-input {
     background: transparent !important;
     border: none !important;
-    color: white !important;
+    color: var(--clr-text) !important;
     font-size: 0.85rem;
     outline: none;
     padding: 2px 0;
 }
 
 .filter-input[type="date"] {
-    color-scheme: dark;
+    color-scheme: var(--color-scheme, dark);
     /* Mejora visibilidad de picker en navegadores modernos */
 }
 
