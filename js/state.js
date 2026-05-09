@@ -104,33 +104,41 @@ async function loadFromFirestore() {
 async function saveToFirestore() {
   if (!_currentUser || !_isLoadedFromCloud) return;
   try {
-    // Para el documento principal, quitamos los datos pesados (fileData) 
-    // para asegurar que nunca supere 1MB, pero mantenemos la estructura.
-    const cleanState = JSON.parse(JSON.stringify(_state));
-    if (cleanState.documentos) {
-      cleanState.documentos = cleanState.documentos.map(d => ({ ...d, fileData: "(en subcolección)" }));
-    }
-
-    // 1. Guardar estado base
-    await firebase.firestore().collection('users').doc(_currentUser.uid).set(cleanState);
-
-    // 2. Guardar documentos pesados individualmente
-    const batch = firebase.firestore().batch();
+    // 1. Guardar documentos pesados individualmente si han cambiado o son nuevos
     const docsColl = firebase.firestore().collection('users').doc(_currentUser.uid).collection('documentos');
     
-    for (const docObj of _state.documentos) {
-      // Solo sincronizamos si tiene datos reales (no el placeholder)
-      if (docObj.fileData && docObj.fileData !== "(en subcolección)") {
-        const dRef = docsColl.doc(docObj.id);
-        batch.set(dRef, docObj);
+    // Usamos una copia para no mutar el estado mientras iteramos (aunque JS es single-threaded aquí)
+    for (const docObj of [..._state.documentos]) {
+      // Si tiene fileData real (Base64), lo subimos a su propio documento
+      if (docObj.fileData && docObj.fileData.startsWith('data:')) {
+        console.log(`Subiendo documento individual: ${docObj.nombre} (${docObj.id})`);
+        await docsColl.doc(docObj.id).set(docObj);
+        // Una vez subido a la sub-colección, en el estado local marcamos que ya está sincronizado
+        // pero NO borramos el fileData local todavía para no romper la UI actual.
+        // El placeholder solo se usa para el documento "main" de Firestore.
       }
     }
+
+    // 2. Preparar el estado "limpio" para el documento principal (sin los Base64 pesados)
+    const cleanState = JSON.parse(JSON.stringify(_state));
+    if (cleanState.documentos) {
+      cleanState.documentos = cleanState.documentos.map(d => ({
+        ...d,
+        fileData: "(en subcolección)" // Referencia para mantener el documento principal por debajo de 1MB
+      }));
+    }
+
+    // 3. Guardar estado base (vehículos, servicios, etc.)
+    await firebase.firestore().collection('users').doc(_currentUser.uid).set(cleanState);
     
-    await batch.commit();
-    console.log("✅ Nube actualizada (Estado + Documentos individuales)");
+    console.log("✅ Nube actualizada correctamente (Sincronización Híbrida)");
   } catch (err) {
     console.error("❌ Error crítico al guardar en Firestore:", err);
-    showToast("⚠️ Error al sincronizar datos pesados.");
+    if (err.message.includes('too large')) {
+        showToast("⚠️ El archivo es demasiado grande para Firestore.");
+    } else {
+        showToast("⚠️ Error de sincronización con la nube.");
+    }
   }
 }
 
