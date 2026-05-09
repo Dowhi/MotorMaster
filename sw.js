@@ -1,4 +1,11 @@
-const CACHE_NAME = 'motormaster-v11.0';
+const CACHE_NAME = 'motormaster-v11.1';
+
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
 const ASSETS = [
     './',
     './index.html',

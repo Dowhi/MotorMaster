@@ -92,10 +92,24 @@ async function loadFromFirestore() {
 async function saveToFirestore() {
   if (!_currentUser || !_isLoadedFromCloud) return;
   try {
+    const stateStr = JSON.stringify(_state);
+    const size = new Blob([stateStr]).size;
+    console.log(`Intentando sincronizar con la nube... Tamaño del estado: ${(size/1024).toFixed(2)}KB`);
+
+    if (size > 1000 * 1024) {
+      console.error("¡ERROR! El estado supera el límite de 1MB de Firestore.");
+      showToast("⚠️ Error de sincronización: Demasiados documentos o archivos grandes.");
+      return;
+    }
+
     await firebase.firestore().collection('users').doc(_currentUser.uid).set(_state);
-    console.log("Nube actualizada");
+    console.log("✅ Nube actualizada correctamente.");
   } catch (err) {
-    console.error("Error al guardar en Firestore:", err);
+    console.error("❌ Error crítico al guardar en Firestore:", err);
+    // Si es un error de permiso o cuota, avisamos
+    if (err.code === 'permission-denied') {
+        showToast("⚠️ Error: Permisos de Firebase insuficientes.");
+    }
   }
 }
 

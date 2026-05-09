@@ -233,15 +233,26 @@
   <script src="./js/notifications.js"></script>
   <script src="./js/app.js"></script>
   <script>
-    /*
+    // FORCE UNREGISTER OLD SW AND CACHE BUSTING
     if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+          registration.unregister();
+          console.log('Old SW Unregistered');
+        }
+      });
+      // Register new SW with a different path/query to bypass some caches
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('SW Registered'))
+        navigator.serviceWorker.register('./sw.js?v=11.1')
+          .then(reg => {
+            console.log('SW Registered v11.1');
+            if (reg.waiting) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          })
           .catch(err => console.log('SW Error', err));
       });
     }
-    */
 
     // Mobile Menu Toggle
     const menuToggle = document.getElementById('menu-toggle');
