@@ -373,102 +373,110 @@ function openDocumentoModal(id = null, rerender) {
   const isEdit = id !== null;
   const data = isEdit ? getState().documentos.find(d => d.id === id) : null;
 
-  openModal(isEdit ? 'Editar Documento' : 'Registrar Documento', `<div class="form space-y-4">
-    <div class="form-group">
-      <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Nombre del Documento *</label>
-      <input id="doc-name" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 ring-primary/30" placeholder="Ej: Permiso de Circulación" value="${data ? data.nombre : ''}">
-    </div>
-    <div class="form-group">
-      <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Categoría</label>
-      <select id="doc-cat" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 ring-primary/30 appearance-none">
-        <option value="Propiedad / Compra" ${data?.categoria === 'Propiedad / Compra' ? 'selected' : ''}>Propiedad / Compra</option>
-        <option value="Seguro / Póliza" ${data?.categoria === 'Seguro / Póliza' ? 'selected' : ''}>Seguro / Póliza</option>
-        <option value="Ficha Técnica / ITV" ${data?.categoria === 'Ficha Técnica / ITV' ? 'selected' : ''}>Ficha Técnica / ITV</option>
-        <option value="Impuesto Circulación" ${data?.categoria === 'Impuesto Circulación' ? 'selected' : ''}>Impuesto Circulación</option>
-        <option value="Otros" ${data?.categoria === 'Otros' ? 'selected' : ''}>Otros</option>
-      </select>
-    </div>
-    ${!isEdit ? `
-    <div class="form-group">
-      <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Archivo (Imagen o PDF) *</label>
-      <div style="display: flex; gap: 8px;">
-        <input type="file" id="doc-file" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-2 py-2 text-xs text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30" accept="image/*,application/pdf" capture="environment">
+  openModal(isEdit ? 'Editar Documento' : 'Registrar Documento', `
+    <div class="form space-y-4">
+      <div class="form-group">
+        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Nombre del Documento *</label>
+        <input id="doc-name" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none" placeholder="Ej: Permiso de Circulación" value="${data ? data.nombre : ''}">
       </div>
-      <p class="text-[10px] text-slate-500 italic mt-1.5">Máximo 2MB recomendado para asegurar el guardado.</p>
-    </div>` : ''}
-    <div class="form-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" id="btn-save-doc">${isEdit ? 'Actualizar' : 'Guardar Documento'}</button>
+      <div class="form-group">
+        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Categoría</label>
+        <select id="doc-cat" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white appearance-none">
+          <option value="Propiedad / Compra" ${data?.categoria === 'Propiedad / Compra' ? 'selected' : ''}>Propiedad / Compra</option>
+          <option value="Seguro / Póliza" ${data?.categoria === 'Seguro / Póliza' ? 'selected' : ''}>Seguro / Póliza</option>
+          <option value="Ficha Técnica / ITV" ${data?.categoria === 'Ficha Técnica / ITV' ? 'selected' : ''}>Ficha Técnica / ITV</option>
+          <option value="Impuesto Circulación" ${data?.categoria === 'Impuesto Circulación' ? 'selected' : ''}>Impuesto Circulación</option>
+          <option value="Otros" ${data?.categoria === 'Otros' ? 'selected' : ''}>Otros</option>
+        </select>
+      </div>
+      ${!isEdit ? `
+      <div class="form-group">
+        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Archivo (Imagen o PDF) *</label>
+        <input type="file" id="doc-file" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-2 py-2 text-xs text-slate-300" accept="image/*,application/pdf" capture="environment">
+        <p class="text-[10px] text-slate-500 italic mt-1.5">Máximo 800KB recomendado para modo de respaldo.</p>
+      </div>` : ''}
+      <div class="form-actions mt-6 flex gap-3">
+        <button class="btn btn-ghost flex-1" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary flex-1" id="btn-save-doc">${isEdit ? 'Actualizar' : 'Guardar'}</button>
+      </div>
     </div>
-  </div>`);
+  `);
 
-  document.getElementById('btn-save-doc').onclick = async (btnEvt) => {
+  document.getElementById('btn-save-doc').onclick = async () => {
     const name = document.getElementById('doc-name').value.trim();
     const cat = document.getElementById('doc-cat').value;
-    const btn = btnEvt.target;
+    const btn = document.getElementById('btn-save-doc');
+    const fileInput = document.getElementById('doc-file');
+    const file = fileInput ? fileInput.files[0] : null;
+    const user = firebase.auth().currentUser;
 
-    if (isEdit) {
-      if (!name) { alert('Completa los campos obligatorios'); return; }
-      updateDocumento(id, { nombre: name, categoria: cat });
-      closeModal();
-      rerender();
-      showToast('Documento actualizado correctamente');
-    } else {
-      const fileInput = document.getElementById('doc-file');
-      const file = fileInput.files[0];
-      const user = firebase.auth().currentUser;
+    if (!name || (!isEdit && !file)) {
+      alert('Por favor, completa los campos obligatorios.');
+      return;
+    }
 
-      if (!name || !file) { alert('Completa los campos obligatorios'); return; }
+    const originalText = btn.textContent;
+    btn.textContent = 'Procesando...';
+    btn.disabled = true;
 
-      const originalText = btn.textContent;
-      btn.textContent = 'Subiendo...';
-      btn.disabled = true;
+    try {
+      let fileDataUrl = data ? data.fileData : '';
+      let uploadMethod = data ? (data.storageMode || 'base64') : 'storage';
 
-      try {
-        let fileDataUrl = '';
-        let uploadMethod = 'storage';
-
-        if (user) {
-          try {
-            const storageRef = firebase.storage().ref(`users/${user.uid}/docs/${Date.now()}_${file.name}`);
+      if (file) {
+        // Intento con Firebase Storage + Timeout
+        try {
+          const storagePromise = (async () => {
+            const path = `users/${user?.uid || 'anonymous'}/docs/${Date.now()}_${file.name}`;
+            const storageRef = firebase.storage().ref(path);
             const snapshot = await storageRef.put(file);
-            fileDataUrl = await snapshot.ref.getDownloadURL();
-          } catch (storageErr) {
-            console.warn('Fallo Storage (CORS?), intentando fallback Base64...', storageErr);
-            if (file.size > 800 * 1024) { // ~800KB para dejar margen al resto del doc
-              throw new Error('Error de conexión a Storage y el archivo es demasiado grande para el modo de respaldo (>800KB).');
-            }
-            uploadMethod = 'base64';
-          }
-        }
+            return await snapshot.ref.getDownloadURL();
+          })();
 
-        if (!fileDataUrl) {
+          const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000));
+          fileDataUrl = await Promise.race([storagePromise, timeoutPromise]);
+          uploadMethod = 'storage';
+          console.log('✅ Subido a Storage');
+        } catch (e) {
+          console.warn('⚠️ Storage falló (CORS/Timeout). Usando fallback Base64...', e);
+          if (file.size > 900 * 1024) {
+             throw new Error('El archivo es muy grande (>900KB) para el modo de respaldo. Prueba con uno más pequeño.');
+          }
+          uploadMethod = 'base64';
           fileDataUrl = await new Promise((res, rej) => {
-            const r = new FileReader();
-            r.onload = e => res(e.target.result);
-            r.onerror = rej;
-            r.readAsDataURL(file);
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result);
+            reader.onerror = rej;
+            reader.readAsDataURL(file);
           });
         }
-
-        addDocumento({ 
-          nombre: name, 
-          categoria: cat, 
-          fileData: fileDataUrl, 
-          fileType: file.type, 
-          fechaSubida: fmt.today(),
-          storageMode: uploadMethod 
-        });
-        
-        closeModal();
-        rerender();
-        showToast(uploadMethod === 'base64' ? 'Guardado en la nube (Modo Sincronización)' : 'Documento guardado con éxito');
-      } catch (err) {
-        console.error('Error de subida:', err);
-        alert('Error: ' + err.message);
-        btn.textContent = originalText;
-        btn.disabled = false;
       }
+
+      const docObj = {
+        nombre: name,
+        categoria: cat,
+        fileData: fileDataUrl,
+        fileType: file ? file.type : (data ? data.fileType : 'application/pdf'),
+        fechaSubida: data ? data.fechaSubida : fmt.today(),
+        storageMode: uploadMethod
+      };
+
+      if (isEdit) {
+        updateDocumento(id, docObj);
+        showToast('Documento actualizado');
+      } else {
+        addDocumento(docObj);
+        showToast(uploadMethod === 'base64' ? 'Guardado (Sincronización activada)' : 'Documento guardado');
+      }
+
+      closeModal();
+      rerender();
+    } catch (err) {
+      console.error('Error al guardar documento:', err);
+      alert('Error: ' + err.message);
+    } finally {
+      btn.textContent = originalText;
+      btn.disabled = false;
     }
   };
 }
