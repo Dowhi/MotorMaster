@@ -76,12 +76,21 @@ async function loadFromFirestore() {
     const docsSnapshot = await firebase.firestore().collection('users').doc(_currentUser.uid)
       .collection('documentos').get();
     
-    const remoteDocs = [];
-    docsSnapshot.forEach(d => remoteDocs.push({ id: d.id, ...d.data() }));
+    const subCollDocs = [];
+    docsSnapshot.forEach(d => subCollDocs.push({ id: d.id, ...d.data() }));
     
-    if (remoteDocs.length > 0) {
-      _state.documentos = remoteDocs;
-    }
+    // Mezclar: Los de la subcolección tienen prioridad (son los más nuevos/completos)
+    // Pero si había antiguos en el state, los conservamos si no están en la subcolección.
+    const existingDocs = _state.documentos || [];
+    const combinedDocs = [...subCollDocs];
+    
+    existingDocs.forEach(oldDoc => {
+      if (!combinedDocs.find(d => d.id === oldDoc.id)) {
+        combinedDocs.push(oldDoc);
+      }
+    });
+
+    _state.documentos = combinedDocs;
 
     console.log("✅ Datos sincronizados desde la nube (Estado + Documentos)");
     _isLoadedFromCloud = true;
