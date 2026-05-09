@@ -425,12 +425,23 @@ function openDocumentoModal(id = null, rerender) {
 
       try {
         let fileDataUrl = '';
+        let uploadMethod = 'storage';
+
         if (user) {
-          const storageRef = firebase.storage().ref(`users/${user.uid}/docs/${Date.now()}_${file.name}`);
-          const snapshot = await storageRef.put(file);
-          fileDataUrl = await snapshot.ref.getDownloadURL();
-        } else {
-          if (file.size > 2 * 1024 * 1024) throw new Error('Sin sesión, el archivo es demasiado grande (>2MB).');
+          try {
+            const storageRef = firebase.storage().ref(`users/${user.uid}/docs/${Date.now()}_${file.name}`);
+            const snapshot = await storageRef.put(file);
+            fileDataUrl = await snapshot.ref.getDownloadURL();
+          } catch (storageErr) {
+            console.warn('Fallo Storage (CORS?), intentando fallback Base64...', storageErr);
+            if (file.size > 800 * 1024) { // ~800KB para dejar margen al resto del doc
+              throw new Error('Error de conexión a Storage y el archivo es demasiado grande para el modo de respaldo (>800KB).');
+            }
+            uploadMethod = 'base64';
+          }
+        }
+
+        if (!fileDataUrl) {
           fileDataUrl = await new Promise((res, rej) => {
             const r = new FileReader();
             r.onload = e => res(e.target.result);
@@ -438,12 +449,21 @@ function openDocumentoModal(id = null, rerender) {
             r.readAsDataURL(file);
           });
         }
-        addDocumento({ nombre: name, categoria: cat, fileData: fileDataUrl, fileType: file.type, fechaSubida: fmt.today() });
+
+        addDocumento({ 
+          nombre: name, 
+          categoria: cat, 
+          fileData: fileDataUrl, 
+          fileType: file.type, 
+          fechaSubida: fmt.today(),
+          storageMode: uploadMethod 
+        });
+        
         closeModal();
         rerender();
-        showToast('Documento guardado con éxito');
+        showToast(uploadMethod === 'base64' ? 'Guardado en la nube (Modo Sincronización)' : 'Documento guardado con éxito');
       } catch (err) {
-        console.error(err);
+        console.error('Error de subida:', err);
         alert('Error: ' + err.message);
         btn.textContent = originalText;
         btn.disabled = false;

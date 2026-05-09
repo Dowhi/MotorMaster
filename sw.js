@@ -31,8 +31,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+    // Solo interceptar peticiones GET de nuestro propio dominio
+    if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) {
+        return;
+    }
+
     e.respondWith(
-        caches.match(e.request).then(res => res || fetch(e.request))
+        caches.match(e.request)
+            .then(res => res || fetch(e.request))
+            .catch(() => fetch(e.request))
     );
 });
 
