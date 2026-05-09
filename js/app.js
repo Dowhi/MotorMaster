@@ -485,11 +485,35 @@ function viewDocument(id) {
   const d = getState().documentos.find(doc => doc.id === id);
   if (!d) return;
 
-  const content = d.fileType.startsWith('image')
-    ? `<img src="${d.fileData}" style="width: 100%; border-radius: 8px;">`
-    : `<iframe src="${d.fileData}" style="width: 100%; height: 500px; border: none; border-radius: 8px;"></iframe>`;
+  const isImage = d.fileType?.startsWith('image');
+  let content = '';
 
-  openModal(d.nombre, `<div style="text-align: center;">${content}</div>`);
+  if (isImage) {
+    content = `<img src="${d.fileData}" style="width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">`;
+  } else {
+    // Para PDFs en móviles, el iframe/object a veces falla. Ponemos un visor con fallback.
+    content = `
+      <div style="width: 100%; height: 70vh; min-height: 400px; position: relative;">
+        <object data="${d.fileData}" type="application/pdf" width="100%" height="100%" style="border-radius: 8px;">
+          <div style="padding: 40px 20px; background: var(--clr-surface-2); border-radius: 12px; border: 1px dashed var(--clr-border);">
+            <p style="margin-bottom: 20px; color: var(--clr-text-2);">El visor no es compatible con este dispositivo.</p>
+            <a href="${d.fileData}" download="${d.nombre}.pdf" class="btn btn-primary" style="display: inline-block; text-decoration: none;">Abrir / Descargar Documento</a>
+          </div>
+        </object>
+      </div>
+    `;
+  }
+
+  const footer = `
+    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+      <a href="${d.fileData}" download="${d.nombre}${isImage ? '.jpg' : '.pdf'}" class="btn btn-secondary btn-sm" style="text-decoration: none;">
+        <span>📥</span> Descargar
+      </a>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cerrar</button>
+    </div>
+  `;
+
+  openModal(d.nombre, `<div class="doc-viewer-container">${content}${footer}</div>`);
 }
 
 /* User 5: Sale Report View */
