@@ -65,51 +65,63 @@ firebase.auth().onAuthStateChanged(user => {
 async function loadFromFirestore() {
   if (!_currentUser) return;
   try {
+    // 1. Cargar estado base (config, vehículos, etc.)
     const doc = await firebase.firestore().collection('users').doc(_currentUser.uid).get();
     if (doc.exists) {
       const remoteData = doc.data();
-      // Mezclar datos locales con remotos (preferencia a remotos)
       _state = { ..._state, ...remoteData };
-      console.log("Datos cargados desde la nube");
-    } else {
-      console.log("No hay datos en la nube, usando locales");
     }
 
-    _isLoadedFromCloud = true; // Decimos que ya "sabemos" lo que hay (o no hay)
-
-    if (!doc.exists) {
-      console.log("No hay datos en la nube, subiendo los locales actuales...");
-      await saveToFirestore();
+    // 2. Cargar documentos desde sub-colección (para evitar límite de 1MB)
+    const docsSnapshot = await firebase.firestore().collection('users').doc(_currentUser.uid)
+      .collection('documentos').get();
+    
+    const remoteDocs = [];
+    docsSnapshot.forEach(d => remoteDocs.push({ id: d.id, ...d.data() }));
+    
+    if (remoteDocs.length > 0) {
+      _state.documentos = remoteDocs;
     }
 
-    saveState(false); // Solo local para actualizar caché
+    console.log("✅ Datos sincronizados desde la nube (Estado + Documentos)");
+    _isLoadedFromCloud = true;
+    saveState(false); 
     if (typeof router === 'function') router();
   } catch (err) {
-    console.error("Error al cargar de Firestore:", err);
+    console.error("❌ Error al cargar de Firestore:", err);
   }
 }
 
 async function saveToFirestore() {
   if (!_currentUser || !_isLoadedFromCloud) return;
   try {
-    const stateStr = JSON.stringify(_state);
-    const size = new Blob([stateStr]).size;
-    console.log(`Intentando sincronizar con la nube... Tamaño del estado: ${(size/1024).toFixed(2)}KB`);
-
-    if (size > 1000 * 1024) {
-      console.error("¡ERROR! El estado supera el límite de 1MB de Firestore.");
-      showToast("⚠️ Error de sincronización: Demasiados documentos o archivos grandes.");
-      return;
+    // Para el documento principal, quitamos los datos pesados (fileData) 
+    // para asegurar que nunca supere 1MB, pero mantenemos la estructura.
+    const cleanState = JSON.parse(JSON.stringify(_state));
+    if (cleanState.documentos) {
+      cleanState.documentos = cleanState.documentos.map(d => ({ ...d, fileData: "(en subcolección)" }));
     }
 
-    await firebase.firestore().collection('users').doc(_currentUser.uid).set(_state);
-    console.log("✅ Nube actualizada correctamente.");
+    // 1. Guardar estado base
+    await firebase.firestore().collection('users').doc(_currentUser.uid).set(cleanState);
+
+    // 2. Guardar documentos pesados individualmente
+    const batch = firebase.firestore().batch();
+    const docsColl = firebase.firestore().collection('users').doc(_currentUser.uid).collection('documentos');
+    
+    for (const docObj of _state.documentos) {
+      // Solo sincronizamos si tiene datos reales (no el placeholder)
+      if (docObj.fileData && docObj.fileData !== "(en subcolección)") {
+        const dRef = docsColl.doc(docObj.id);
+        batch.set(dRef, docObj);
+      }
+    }
+    
+    await batch.commit();
+    console.log("✅ Nube actualizada (Estado + Documentos individuales)");
   } catch (err) {
     console.error("❌ Error crítico al guardar en Firestore:", err);
-    // Si es un error de permiso o cuota, avisamos
-    if (err.code === 'permission-denied') {
-        showToast("⚠️ Error: Permisos de Firebase insuficientes.");
-    }
+    showToast("⚠️ Error al sincronizar datos pesados.");
   }
 }
 

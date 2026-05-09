@@ -489,25 +489,32 @@ function viewDocument(id) {
   let content = '';
 
   if (isImage) {
-    content = `<img src="${d.fileData}" style="width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">`;
-  } else {
-    // Para PDFs en móviles, el iframe/object a veces falla. Ponemos un visor con fallback.
     content = `
-      <div style="width: 100%; height: 70vh; min-height: 400px; position: relative;">
-        <object data="${d.fileData}" type="application/pdf" width="100%" height="100%" style="border-radius: 8px;">
-          <div style="padding: 40px 20px; background: var(--clr-surface-2); border-radius: 12px; border: 1px dashed var(--clr-border);">
-            <p style="margin-bottom: 20px; color: var(--clr-text-2);">El visor no es compatible con este dispositivo.</p>
-            <a href="${d.fileData}" download="${d.nombre}.pdf" class="btn btn-primary" style="display: inline-block; text-decoration: none;">Abrir / Descargar Documento</a>
-          </div>
-        </object>
+      <div style="text-align: center; overflow: auto; max-height: 70vh;">
+        <img src="${d.fileData}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+      </div>`;
+  } else {
+    // Para PDFs: En móviles la mayoría no soporta iFrame/Object de base64. 
+    // Mostramos una tarjeta elegante con opción de abrir/descargar.
+    content = `
+      <div style="padding: 30px 20px; text-align: center; background: var(--clr-surface-2); border-radius: 12px; border: 1px dashed var(--clr-border);">
+        <div style="font-size: 3rem; margin-bottom: 15px;">📄</div>
+        <h3 style="margin-bottom: 10px; color: var(--clr-text-1);">${d.nombre}</h3>
+        <p style="color: var(--clr-text-2); margin-bottom: 25px; font-size: 0.9rem;">El documento está listo para ser visualizado.</p>
+        <a href="${d.fileData}" target="_blank" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; padding: 12px 24px;">
+           <span>👁️</span> VER DOCUMENTO COMPLETO
+        </a>
+      </div>
+      <div style="margin-top: 15px; font-size: 0.8rem; color: var(--clr-text-3);">
+        * Si no se abre, pulsa el botón de descargar abajo.
       </div>
     `;
   }
 
   const footer = `
-    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; border-top: 1px solid var(--clr-border); padding-top: 15px;">
       <a href="${d.fileData}" download="${d.nombre}${isImage ? '.jpg' : '.pdf'}" class="btn btn-secondary btn-sm" style="text-decoration: none;">
-        <span>📥</span> Descargar
+        <span>📥</span> Guardar Copia
       </a>
       <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cerrar</button>
     </div>
