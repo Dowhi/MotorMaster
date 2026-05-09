@@ -1,4 +1,5 @@
-/* ===== APP.JS — MotorMaster SPA Router + All Module Views v1.4.1 ===== */
+/* ===== APP.JS — Core App UI & Logic v1.1.0 ===== */
+console.log('MotorMaster App v1.1.0 loaded');
 
 /* ---- HELPERS ---- */
 const fmt = {
