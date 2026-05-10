@@ -268,9 +268,9 @@
       });
       // Register new SW with a different path/query to bypass some caches
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=11.1')
+        navigator.serviceWorker.register('./sw.js?v=11.2')
           .then(reg => {
-            console.log('SW Registered v11.1');
+            console.log('SW Registered v11.2');
             if (reg.waiting) {
               reg.waiting.postMessage({ type: 'SKIP_WAITING' });
             }

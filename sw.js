@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motormaster-v11.1';
+const CACHE_NAME = 'motormaster-v11.2';
 
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
