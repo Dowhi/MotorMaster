@@ -112,6 +112,11 @@ function stateBadge(s) {
   const m = { 'Pagada': 'badge-success', 'Apto': 'badge-success', 'Completado': 'badge-success', 'Pendiente': 'badge-danger', 'No Apto': 'badge-danger', 'Apto con Defectos': 'badge-warning', 'Programado': 'badge-info' };
   return `<span class="badge ${m[s] || 'badge-neutral'}">${s || '—'}</span>`;
 }
+
+function renderPageBack(label = 'Volver') {
+    return `<a href="#/" class="btn-back"><span class="material-symbols-outlined">arrow_back</span> ${label}</a>`;
+}
+
 const noVehicle = title => `<div class="page-header"><h1 class="page-title">${title}</h1></div>
   <div class="empty-state"><div class="empty-icon">🚗</div><h2>Sin vehículo activo</h2><p>Ve al Garaje para añadir o seleccionar un vehículo.</p><a href="#/garage" class="btn btn-primary">Ir al Garaje</a></div>`;
 function whatsappShare(msg) {
@@ -286,14 +291,41 @@ function renderUserProfile() {
 function router() {
   const route = getRoute();
   const fn = ROUTES[route] || renderDashboard;
+  
+  // Sidebar active state
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route === route));
+  
+  // Bottom Nav active state
+  document.querySelectorAll('.bottom-nav-item').forEach(el => el.classList.toggle('active', el.dataset.route === route));
+  
+  // Header Back Button visibility
+  const backBtn = document.getElementById('header-back-btn');
+  if (backBtn) {
+    if (route === '' || route === 'dashboard') {
+      backBtn.classList.add('hidden');
+    } else {
+      backBtn.classList.remove('hidden');
+      backBtn.onclick = () => window.history.back();
+    }
+  }
+
   renderUserProfile();
   renderVehicleSelector();
   renderHeaderLicensePlate();
   renderAlertBanner(getActiveVehicle()?.id);
   updateGlobalAlertBadge();
+  
+  // Mobile alert badge
+  const mobileAlertBadge = document.getElementById('mobile-alert-badge');
+  const globalAlertCount = document.getElementById('global-alert-count');
+  if (mobileAlertBadge && globalAlertCount) {
+    mobileAlertBadge.textContent = globalAlertCount.textContent;
+    mobileAlertBadge.classList.toggle('hidden', globalAlertCount.classList.contains('hidden'));
+  }
+
   if (typeof checkAndNotifyCriticalAlerts === 'function') checkAndNotifyCriticalAlerts();
   fn();
+  window.scrollTo(0, 0);
 }
 
 /* User 6: TRIPS */
@@ -304,6 +336,7 @@ function renderTripChecklist() {
   const items = ['Presión neumáticos', 'Nivel aceite', 'Líquido limpiaparabrisas', 'Revisar juego luces', 'Botiquín / Triángulos', 'Estado de la rueda de repuesto', 'Documentación física', 'Nivel de refrigerante'];
 
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Checklist de Viaje</h1><p class="page-sub">Preparación para trayectos largos</p></div>
     <button class="btn btn-primary" id="btn-add-trip">+ Nuevo Viaje</button></div>
     <div class="summary-grid">${trips.map(t => `<div class="card summary-card" style="flex-direction:column; align-items:flex-start;">
@@ -340,6 +373,7 @@ function renderGuantera() {
   const docs = getDocsByVehicle(v.id);
 
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header">
       <div><h1 class="page-title">Guantera Digital</h1><p class="page-sub">Documentación original de ${v.marca} ${v.modelo}</p></div>
       <button class="btn btn-primary" id="btn-add-doc">+ Añadir Documento</button>
@@ -757,6 +791,7 @@ function renderSettings() {
   ];
 
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="max-w-2xl mx-auto space-y-6 pb-12 font-display text-slate-100">
       
       <!-- Identidad Visual & Accesibilidad -->
@@ -1119,6 +1154,7 @@ function renderGarage() {
   const { vehicles, activeVehicleId } = getState();
   const content = document.getElementById('main-content');
   content.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><h1 class="page-title">Garaje</h1><button class="btn btn-primary" id="btn-add-veh">+ Nuevo Vehículo</button></div>
     ${!vehicles.length ? emptySection('🚗', 'Tu garaje está vacío') : `
     <div class="vehicles-grid">${vehicles.map(v => `
@@ -1302,6 +1338,7 @@ function renderRevisiones() {
 
   const total = items.reduce((s, r) => s + parseFloat(r.coste || 0), 0);
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Revisiones</h1><p class="page-sub">Mantenimiento Preventivo</p></div>
       <button class="btn btn-primary" id="btn-add-rev">+ Añadir Revisión</button></div>
     
@@ -1438,6 +1475,7 @@ function renderAverias() {
 
   const total = items.reduce((s, a) => s + parseFloat(a.coste || 0), 0);
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Averías</h1><p class="page-sub">Mantenimiento Correctivo</p></div>
       <button class="btn btn-primary" id="btn-add-ave">+ Nueva Avería</button></div>
     
@@ -1594,6 +1632,7 @@ function renderRecambios() {
     return '—';
   }
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Recambios</h1><p class="page-sub">Inventario de Piezas</p></div>
       <button class="btn btn-primary" id="btn-add-rec">+ Añadir Recambio</button></div>
     
@@ -1721,6 +1760,7 @@ function renderITV() {
   if (!v) { c.innerHTML = noVehicle('ITV'); return; }
   const items = getITVByVehicle(v.id).sort((a, b) => b.fechaInspeccion > a.fechaInspeccion ? 1 : -1);
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">ITV</h1><p class="page-sub">Inspección Técnica de Vehículos</p></div>
       <button class="btn btn-primary" id="btn-add-itv">+ Registrar ITV</button></div>
     ${!items.length ? emptySection('🔍', 'Sin registros de ITV') : `
@@ -1809,6 +1849,7 @@ function renderSeguro() {
   if (!v) { c.innerHTML = noVehicle('Seguro'); return; }
   const items = getSeguroByVehicle(v.id);
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Seguro</h1><p class="page-sub">Gestión de Pólizas y Coberturas</p></div>
       <button class="btn btn-primary" id="btn-add-seg">+ Nuevo Seguro</button></div>
     ${!items.length ? emptySection('🛡️', 'Sin pólizas de seguro registradas') : `
@@ -1911,6 +1952,7 @@ function renderMultas() {
   const totalPend = items.filter(m => m.estado === 'Pendiente').reduce((s, m) => s + parseFloat(m.importe || 0), 0);
 
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Multas</h1><p class="page-sub">Gestión de Sanciones DGT/Otras</p></div>
       <button class="btn btn-primary" id="btn-add-mul">+ Nueva Multa</button></div>
     ${!items.length ? emptySection('📋', 'Sin multas registradas') : `
@@ -2065,6 +2107,7 @@ function renderOtros() {
   const items = getOtrosByVehicle(v.id);
   const total = items.reduce((s, o) => s + parseFloat(o.importe || 0), 0);
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Otros</h1><p class="page-sub">Impuestos y Permisos</p></div>
       <button class="btn btn-primary" id="btn-add-otro">+ Añadir Registro</button></div>
     ${!items.length ? emptySection('📁', 'Sin registros adicionales') : `
@@ -2134,7 +2177,9 @@ function renderCalendar() {
   });
 
   const currentYear = new Date().getFullYear();
-  let html = `<div class="page-header"><h1 class="page-title">Calendario Global ${currentYear}</h1></div><div class="calendar-grid">`;
+  let html = `
+    ${renderPageBack()}
+    <div class="page-header"><h1 class="page-title">Calendario Global ${currentYear}</h1></div><div class="calendar-grid">`;
 
   months.forEach((m, idx) => {
     const monthAlerts = allAlerts.filter(a => a.month === idx && a.year === currentYear).sort((a, b) => a.day - b.day);
@@ -2168,6 +2213,7 @@ function renderGlobalAlerts() {
   const alerts = collectAllGlobalAlerts(null);
 
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header">
       <div>
         <h1 class="page-title">Centro de Notificaciones</h1>
@@ -2209,6 +2255,7 @@ function renderTimeline() {
   ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
   c.innerHTML = `
+    ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Cronología Visual</h1><p class="page-sub">Historial de vida de ${v.marca}</p></div></div>
     <div class="timeline-wrap">
       ${events.map(e => `<div class="timeline-item">
