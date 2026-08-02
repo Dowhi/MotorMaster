@@ -43,13 +43,17 @@ function renderAlertBanner(vehicleId) {
     const alerts = collectAlerts(vehicleId);
     if (!alerts.length) { banner.classList.add('hidden'); return; }
     banner.classList.remove('hidden');
-    banner.innerHTML = alerts.map(a => {
+    // Limitar a 3 alertas máximas para no romper el layout con position:fixed
+    const visibleAlerts = alerts.slice(0, 3);
+    const hiddenCount = alerts.length - visibleAlerts.length;
+    banner.innerHTML = visibleAlerts.map(a => {
         const txt = a.days < 0 ? `Vencido hace ${Math.abs(a.days)}d` : a.days === 0 ? 'Vence HOY' : `Faltan ${a.days} días`;
         return `<div class="alert-item alert-${a.type}">
-      <span class="alert-icon">${a.days <= 0 ? '🚨' : '⚠️'}</span>
+      <span class="alert-icon" aria-hidden="true">${a.days <= 0 ? '🚨' : '⚠️'}</span>
       <span class="alert-msg"><strong>ALERTA DE PROXIMIDAD:</strong> ${a.message} — ${txt}</span>
     </div>`;
-    }).join('');
+    }).join('')
+    + (hiddenCount > 0 ? `<div class="alert-item alert-warning" style="cursor:pointer;" onclick="window.location.hash='#/alerts'">ℹ️ Ver ${hiddenCount} alerta${hiddenCount > 1 ? 's' : ''} más →</div>` : '');
     if (typeof updateGlobalAlertBadge === 'function') updateGlobalAlertBadge();
 }
 

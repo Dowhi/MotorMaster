@@ -33,8 +33,11 @@ function loadState() {
     });
     // Apply custom accent color if exists
     if (parsed.accentColor) document.documentElement.style.setProperty('--clr-accent', parsed.accentColor);
-    // Apply retro mode if active
-    if (parsed.retroMode) document.body.classList.add('retro-mode');
+    // Apply retro mode if active (en .app-shell para no romper position:fixed)
+    if (parsed.retroMode) {
+      const shell = document.querySelector('.app-shell');
+      if (shell) shell.classList.add('retro-mode');
+    }
     // Apply UI Scale
     if (parsed.uiScale) document.documentElement.style.fontSize = `${parsed.uiScale}%`;
     return parsed;
@@ -120,7 +123,8 @@ async function saveToFirestore() {
     }
 
     // 2. Preparar el estado "limpio" para el documento principal (sin los Base64 pesados)
-    const cleanState = JSON.parse(JSON.stringify(_state));
+    // structuredClone es más eficiente y correcto que JSON.parse/JSON.stringify
+    const cleanState = structuredClone(_state);
     if (cleanState.documentos) {
       cleanState.documentos = cleanState.documentos.map(d => ({
         ...d,
@@ -169,7 +173,9 @@ function setAccentColor(color) {
 }
 function setRetroMode(active) {
   _state.retroMode = active;
-  document.body.classList.toggle('retro-mode', active);
+  // Aplicado a .app-shell para no romper position:fixed de modal/toast/banner
+  const shell = document.querySelector('.app-shell');
+  if (shell) shell.classList.toggle('retro-mode', active);
   saveState();
 }
 function setUiScale(scale) {

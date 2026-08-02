@@ -1,41 +1,26 @@
-:root {
-    --sidebar-w: 260px;
-    --clr-bg: #0A1322;
-    --clr-surface: #0F172A;
-    --clr-surface-2: #1E293B;
-    --clr-accent: #00C2E0;
-    --clr-accent-dim: rgba(0, 194, 224, 0.1);
-    --clr-accent-glow: rgba(0, 194, 224, 0.4);
-    --clr-text: #F8FAFC;
-    --clr-text-2: #E2E8F0;
-    --clr-text-muted: #94A3B8;
-    --clr-border: #334155;
-    --clr-danger: #EF4444;
-    --clr-danger-dim: rgba(239, 68, 68, 0.1);
-    --clr-warning: #F59E0B;
-    --clr-warning-dim: rgba(245, 158, 11, 0.1);
-    --clr-success: #10B981;
-    --clr-success-dim: rgba(16, 185, 129, 0.1);
-    --clr-info: #3B82F6;
-    --clr-info-dim: rgba(59, 130, 246, 0.1);
+/* ===== APP.CSS — Estilos de componentes (tokens en tokens.css) ===== */
+/* Los tokens de diseño (colores, fuentes, radios, espaciado) viven exclusivamente
+   en tokens.css. Este archivo solo contiene estilos de componentes. */
 
-    --font-head: 'Inter', sans-serif;
-    --font-body: 'Roboto', sans-serif;
+/* ─── ANIMACIONES GLOBALES ─────────────────────────────────────────── */
+@keyframes page-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
 
-    --sp-xs: 4px;
-    --sp-sm: 8px;
-    --sp-md: 12px;
-    --sp-lg: 16px;
-    --sp-xl: 24px;
-    --sp-xxl: 32px;
+@keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
 
-    --r-card: 16px;
-    --r-btn: 8px;
-    --r-input: 8px;
-    --r-sm: 8px;
+@keyframes scale-in {
+    from { opacity: 0; transform: scale(0.96) translateY(6px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
 
-    --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
-    --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 body {
@@ -312,11 +297,13 @@ body {
 }
 
 .nav-group-label {
-    font-size: .65rem;
+    font-size: var(--text-xs); /* 0.75rem — por encima del mínimo WCAG AA */
     font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.12em;
     color: var(--clr-text-muted);
     padding: 0 var(--sp-sm);
+    margin-bottom: 2px;
 }
 
 .nav-item {
@@ -418,17 +405,14 @@ body {
     transform: scale(1.1);
 }
 
-/* Modo Retro (User 23) */
-body.retro-mode {
+/* Modo Retro (User 23) — Aplicado a .app-shell para no romper position:fixed */
+.app-shell.retro-mode {
     filter: sepia(0.5) contrast(1.1) brightness(0.9);
-}
-
-body.retro-mode .app-shell {
     background: #1a1a1a;
 }
 
-body.retro-mode .card,
-body.retro-mode .sidebar {
+.app-shell.retro-mode .card,
+.app-shell.retro-mode .sidebar {
     border-color: #333;
     border-radius: 0;
 }
@@ -549,7 +533,7 @@ body.retro-mode .sidebar {
 
 .alert-warning {
     background: var(--clr-warning);
-    color: black;
+    color: #1a0f00; /* marrón muy oscuro: contraste sin choque visual con el tema oscuro */
 }
 
 /* ===== CARDS ===== */
@@ -560,6 +544,7 @@ body.retro-mode .sidebar {
     box-shadow: var(--shadow-card);
     margin-bottom: var(--sp-md);
     overflow: hidden;
+    transition: box-shadow 220ms var(--ease-out), border-color 220ms var(--ease-out), transform 220ms var(--ease-out);
 }
 
 .card-header {
@@ -648,10 +633,10 @@ body.retro-mode .sidebar {
 }
 
 .compact-item small {
-    font-size: 0.6rem;
+    font-size: var(--text-xs); /* elevado de 0.6rem → 0.75rem para cumplir WCAG AA */
     color: var(--clr-text-muted);
-    font-weight: 800;
-    letter-spacing: 0.05em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
@@ -682,14 +667,20 @@ body.retro-mode .sidebar {
 
 /* Vehicle Hero */
 .vehicle-hero {
-    background: linear-gradient(135deg, var(--clr-surface) 0%, var(--clr-bg) 100%);
+    background: linear-gradient(
+        135deg,
+        rgba(0, 194, 224, 0.07) 0%,
+        var(--clr-surface) 40%,
+        var(--clr-bg) 100%
+    );
     padding: var(--sp-xxl);
     border-radius: var(--r-card);
-    border: 1px solid var(--clr-border);
+    border: 1px solid rgba(0, 194, 224, 0.14);
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: var(--sp-xl);
+    box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0,194,224,0.06);
 }
 
 .hero-stat-value {
@@ -870,61 +861,39 @@ select.form-input option {
     /* Evita desbordamiento en botones de modal */
 }
 
-.invoice-items-wrap {
-    overflow-x: auto;
-    margin-top: 15px;
-    background: var(--clr-bg);
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid var(--clr-border);
-    -webkit-overflow-scrolling: touch;
-}
+/* Bloque duplicado eliminado — la definición correcta está en la sección INVOICE TABLE */
 
-.invoice-table {
-    width: 100%;
-    min-width: 500px;
-    /* Reducido para evitar scroll lateral innecesario */
-    border-collapse: collapse;
-    font-size: 0.85rem;
-}
-
-.invoice-table th,
-.invoice-table td {
-    padding: 8px;
-    text-align: left;
-    border-bottom: 1px solid var(--clr-border);
-}
-
-.invoice-table input {
-    width: 100%;
-    background: transparent;
-    border: none;
-    color: var(--clr-text);
-    font-size: inherit;
-}
-
-/* Modal */
+/* ===== MODAL ===== */
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, .8);
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
     z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
+    animation: fade-in 180ms var(--ease-out) both;
+}
+
+.modal-overlay.hidden {
+    display: none;
 }
 
 .modal {
     background: var(--clr-surface);
     width: 100%;
     max-width: 600px;
-    border-radius: 16px;
+    border-radius: var(--r-card);
+    border: 1px solid rgba(255,255,255,0.07);
+    box-shadow: var(--shadow-modal);
     max-height: 90vh;
     overflow-y: auto;
+    animation: scale-in 220ms var(--ease-out) both;
 }
 
-/* Toast */
+/* ===== TOAST ===== */
 #toast {
     position: fixed;
     bottom: 20px;
@@ -932,16 +901,19 @@ select.form-input option {
     background: var(--clr-accent);
     color: #002D3B;
     padding: 12px 24px;
-    border-radius: 8px;
+    border-radius: var(--r-btn);
     font-weight: 800;
     z-index: 2000;
-    transition: 0.3s;
+    animation: toast-in 220ms var(--ease-spring) both;
+    transition: opacity 280ms var(--ease-in), transform 280ms var(--ease-in);
     opacity: 1;
+    transform: translateY(0);
+    box-shadow: 0 4px 20px rgba(0, 194, 224, 0.35);
 }
 
 #toast.hiding {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
     pointer-events: none;
 }
 
@@ -1428,7 +1400,8 @@ body.workshop-mode .vehicle-hero {
 
 .alert-card:hover {
     border-color: var(--clr-accent);
-    transform: translateX(5px);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-accent);
 }
 
 .alert-card-icon {

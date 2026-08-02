@@ -42,7 +42,8 @@
       theme: {
         extend: {
           colors: {
-            "primary": "#00e5ff",
+            /* Unificado con --clr-accent de tokens.css para coherencia de paleta */
+            "primary": "#00C2E0",
             "background-light": "#f5f8f8",
             "background-dark": "#0a0a0a",
             "slate-card": "#161616",
@@ -86,7 +87,7 @@
 <body>
 
   <!-- Proximity Alert Banner -->
-  <div id="alert-banner" class="alert-banner hidden"></div>
+  <div id="alert-banner" class="alert-banner hidden" role="alert" aria-live="assertive" aria-label="Alertas de proximidad"></div>
 
   <!-- App Shell: Sidebar + Content -->
   <div class="app-shell">

@@ -125,13 +125,17 @@ function whatsappShare(msg) {
 }
 const emptySection = (icon, msg) => `<div class="empty-state"><div class="empty-icon">${icon}</div><h2>${msg}</h2><p>Pulsa el botón de arriba para añadir el primer registro.</p></div>`;
 
-/* ---- TOAST ---- */
+/* ──── TOAST ──── */
 let _toastTimer;
 function showToast(msg) {
   let t = document.getElementById('toast');
-  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }
   t.textContent = '✓  ' + msg;
   t.classList.remove('hiding');
+  // Re-trigger animation
+  t.style.animation = 'none';
+  t.offsetHeight; // reflow
+  t.style.animation = '';
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => { t.classList.add('hiding'); }, 2500);
 }
@@ -270,20 +274,26 @@ function renderUserProfile() {
       }
     };
   } else {
+    // Avatar SVG inline con iniciales (sin dependencia externa)
+    const initials = (user.displayName || user.email || 'U').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    const avatarSrc = user.photoURL
+      ? `<img src="${user.photoURL}" loading="lazy" width="32" height="32" class="w-8 h-8 rounded-full border border-primary/30" alt="${initials}" onerror="this.outerHTML='<span class=\'w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary\'>${initials}</span>'">`
+      : `<span class="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary">${initials}</span>`;
     el.innerHTML = `
       <div class="flex items-center gap-2 bg-slate-800/40 p-2 rounded-lg border border-white/5">
-        <img src="${user.photoURL || 'https://via.placeholder.com/32'}" class="w-8 h-8 rounded-full border border-primary/30">
+        ${avatarSrc}
         <div class="flex-1 overflow-hidden">
-          <p class="text-[10px] font-bold text-slate-200 truncate">${user.displayName}</p>
-          <button class="text-[8px] text-red-400 hover:text-red-300 uppercase font-black tracking-widest" id="btn-logout">Cerrar Sesión</button>
+          <p class="text-[10px] font-bold text-slate-200 truncate">${user.displayName || user.email}</p>
+          <button class="text-[8px] text-red-400 hover:text-red-300 uppercase font-black tracking-widest" id="btn-logout" aria-label="Cerrar sesión">Cerrar Sesión</button>
         </div>
       </div>
     `;
     document.getElementById('btn-logout').onclick = () => {
-      if (confirm('¿Cerrar sesión? Los datos dejarán de sincronizarse.')) {
-        logout();
-        showToast('Sesión cerrada');
-      }
+      openConfirmModal(
+        '¿Cerrar sesión?',
+        'Los datos dejarán de sincronizarse con la nube.',
+        () => { logout(); showToast('Sesión cerrada'); }
+      );
     };
   }
 }
@@ -325,6 +335,15 @@ function router() {
 
   if (typeof checkAndNotifyCriticalAlerts === 'function') checkAndNotifyCriticalAlerts();
   fn();
+
+  // Animación de entrada del contenido principal
+  const mc = document.getElementById('main-content');
+  if (mc) {
+    mc.style.animation = 'none';
+    mc.offsetHeight; // reflow
+    mc.style.animation = 'page-in 220ms var(--ease-out) both';
+  }
+
   window.scrollTo(0, 0);
 }
 
@@ -354,8 +373,9 @@ function renderTripChecklist() {
     </div>`).join('')}</div>`;
 
   document.getElementById('btn-add-trip').onclick = () => {
-    const dest = prompt('Destino del viaje:');
-    if (dest) { addTripChecklist({ destino: dest, fecha: fmt.today() }); renderTripChecklist(); }
+    openPromptModal('Destino del viaje:', (dest) => {
+      if (dest) { addTripChecklist({ destino: dest, fecha: fmt.today() }); renderTripChecklist(); }
+    });
   };
   setupEditBtns(renderTripChecklist);
   document.querySelectorAll('.check-item input').forEach(inp => {
@@ -697,7 +717,21 @@ function renderDashboard() {
         <div class="year-filter" style="display: flex; align-items: center; gap: 8px;">
           <span>Año:</span>
           <select id="dash-year" class="form-input" style="padding: 4px 12px; width: auto; font-size: 0.9rem; background: var(--clr-surface-2); border-color: var(--clr-border);">
-            ${[2023, 2024, 2025, 2026].map(y => `<option ${y == selectedYear ? 'selected' : ''} value="${y}">${y}</option>`).join('')}
+            ${(() => {
+              const currentYear = new Date().getFullYear();
+              const s = getState();
+              // Detectar el año más antiguo en todos los registros del vehículo
+              const allDates = [
+                ...s.revisiones, ...s.averias, ...s.recambios,
+                ...s.seguro, ...s.multas, ...s.otros
+              ].filter(r => r.vehicleId === vid)
+               .map(r => parseInt((r.fecha || r.fechaVencimiento || r.fechaRenovacion || '').substring(0, 4)))
+               .filter(y => !isNaN(y) && y > 2000);
+              const minYear = allDates.length ? Math.min(...allDates) : currentYear;
+              const years = [];
+              for (let y = minYear; y <= currentYear + 1; y++) years.push(y);
+              return years.map(y => `<option ${y == selectedYear ? 'selected' : ''} value="${y}">${y}</option>`).join('');
+            })()}
           </select>
         </div>
       </div>
@@ -948,6 +982,7 @@ function renderSettings() {
     const a = document.createElement('a');
     a.href = url; a.download = `motormaster_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000); // Liberar memoria
     showToast('Copia de seguridad generada');
   };
   document.getElementById('btn-trigger-import').onclick = () => document.getElementById('input-import').click();
@@ -986,6 +1021,7 @@ function exportToCSV() {
   const a = document.createElement('a');
   a.href = url; a.download = `motormaster_export.csv`;
   a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000); // Liberar memoria
   showToast('Archivo CSV generado');
 }
 
@@ -1311,12 +1347,18 @@ function renderGarage() {
   });
   content.querySelectorAll('[data-del]').forEach(b => b.onclick = (e) => {
     e.stopPropagation();
-    if (!confirm('¿Eliminar este vehículo y todos sus registros? Esta acción no se puede deshacer.')) return;
-    const id = b.dataset.del; const s = getState();
-    s.vehicles = s.vehicles.filter(v => v.id !== id);
-    ['revisiones', 'averias', 'recambios', 'itv', 'seguro', 'multas', 'otros'].forEach(c => { s[c] = s[c].filter(r => r.vehicleId !== id); });
-    if (s.activeVehicleId === id) s.activeVehicleId = s.vehicles[0]?.id || null;
-    saveState(); router(); showToast('Vehículo eliminado');
+    const id = b.dataset.del;
+    openConfirmModal(
+      '¿Eliminar vehículo?',
+      'Se eliminarán el vehículo y todos sus registros. Esta acción no se puede deshacer.',
+      () => {
+        const s = getState();
+        s.vehicles = s.vehicles.filter(v => v.id !== id);
+        ['revisiones', 'averias', 'recambios', 'itv', 'seguro', 'multas', 'otros'].forEach(c => { s[c] = s[c].filter(r => r.vehicleId !== id); });
+        if (s.activeVehicleId === id) s.activeVehicleId = s.vehicles[0]?.id || null;
+        saveState(); router(); showToast('Vehículo eliminado');
+      }
+    );
   });
 }
 
@@ -1522,10 +1564,6 @@ function openAveriaModal(id = null, rerender) {
         <option ${data && data.prioridad === 'Alta' ? 'selected' : ''}>Alta</option>
       </select></div>
       <div class="form-group"><label>KM actuales del vehículo *</label><input id="af-km" type="number" class="form-input" value="${data ? (data.km || 0) : v.km}"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>Taller / Comercio</label><input id="af-taller" class="form-input" placeholder="Nombre del taller" value="${data ? (data.taller || '') : ''}"></div>
-      <div class="form-group"><label>Coste Final (€)</label><input id="af-coste" type="number" class="form-input" value="${data ? data.coste : ''}" readonly></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Taller / Comercio</label><input id="af-taller" class="form-input" placeholder="Nombre del taller" value="${data ? (data.taller || '') : ''}"></div>
@@ -2311,13 +2349,14 @@ function globalSearch(query) {
   `;
 }
 
-/* ======================== DELETE HELPER ======================== */
+/* ======================== DELETE / EDIT HELPERS ======================== */
 function setupDeleteBtns(rerender) {
   document.querySelectorAll('[data-delete]').forEach(b => b.onclick = () => {
-    if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
-    deleteRecord(b.dataset.delete, b.dataset.id);
-    rerender();
-    showToast('Registro eliminado');
+    openConfirmModal(
+      '¿Eliminar registro?',
+      'Esta acción no se puede deshacer.',
+      () => { deleteRecord(b.dataset.delete, b.dataset.id); rerender(); showToast('Registro eliminado'); }
+    );
   });
 }
 
@@ -2335,14 +2374,57 @@ function setupEditBtns(rerender) {
     if (col === 'documentos') openDocumentoModal(id, rerender);
     if (col === 'viajes') {
       const t = getState().viajes.find(v => v.id === id);
-      const newDest = prompt('Nuevo destino:', t.destino);
-      if (newDest) {
-        t.destino = newDest;
-        saveState();
-        if (typeof rerender === 'function') rerender();
-      }
+      openPromptModal('Nuevo destino del viaje:', (newDest) => {
+        if (newDest) {
+          t.destino = newDest;
+          saveState();
+          if (typeof rerender === 'function') rerender();
+        }
+      }, t.destino);
     }
   });
+}
+
+/* ======================== MODAL HELPERS (reemplazo de alert/confirm/prompt) ======================== */
+
+/**
+ * Modal de confirmación reutilizable (reemplaza confirm() nativo)
+ */
+function openConfirmModal(title, message, onConfirm) {
+  openModal(title, `
+    <div style="padding: 8px 0 20px;">
+      <p style="color: var(--clr-text-2); font-size: 0.95rem; line-height: 1.5;">${message}</p>
+    </div>
+    <div class="form-actions" style="justify-content: flex-end; border-top: 1px solid var(--clr-border); padding-top: 16px; margin-top: 0;">
+      <button class="btn btn-secondary" id="conf-cancel">Cancelar</button>
+      <button class="btn btn-danger" id="conf-ok">✓ Confirmar</button>
+    </div>
+  `);
+  document.getElementById('conf-cancel').onclick = closeModal;
+  document.getElementById('conf-ok').onclick = () => { closeModal(); onConfirm(); };
+}
+
+/**
+ * Modal de entrada de texto reutilizable (reemplaza prompt() nativo)
+ */
+function openPromptModal(label, onSubmit, defaultValue = '') {
+  openModal(label, `
+    <div class="form" style="padding: 8px 0;">
+      <div class="form-group">
+        <input id="prompt-input" class="form-input" value="${defaultValue}" placeholder="${label}" autofocus>
+      </div>
+      <div class="form-actions" style="justify-content: flex-end; border-top: 1px solid var(--clr-border); padding-top: 16px; margin-top: 4px;">
+        <button class="btn btn-secondary" id="prompt-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="prompt-ok">Aceptar</button>
+      </div>
+    </div>
+  `);
+  const input = document.getElementById('prompt-input');
+  const submit = () => { const val = input.value.trim(); if (val) { closeModal(); onSubmit(val); } };
+  document.getElementById('prompt-cancel').onclick = closeModal;
+  document.getElementById('prompt-ok').onclick = submit;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') closeModal(); });
+  setTimeout(() => input.focus(), 50);
 }
 
 /* ======================== INIT ======================== */
