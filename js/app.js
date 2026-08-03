@@ -302,6 +302,11 @@ const ROUTES = {
 };
 function getRoute() { return (window.location.hash || '').replace('#/', '').replace('#', ''); }
 
+function selectVehicleAndNavigate(vid, route = '#/') {
+  setActiveVehicle(vid);
+  window.location.hash = route;
+}
+
 function renderUserProfile() {
   const el = document.getElementById('user-profile');
   if (!el) return;
@@ -967,7 +972,7 @@ function renderDashboard() {
         </div>
         <div style="padding: 10px;">
           ${critical.map(a => `
-            <div style="display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="setActiveVehicle('${a.vehicleId}'); window.location.hash='#/'">
+            <div class="alert-hover-item" style="display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;" onclick="selectVehicleAndNavigate('${a.vehicleId}')">
               <span style="font-size: 1.2rem;">${a.days <= 0 ? '🚨' : '⚠️'}</span>
               <div style="flex: 1;">
                 <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 700; text-transform: uppercase;">${a.vehicleName}</div>
@@ -2881,7 +2886,7 @@ function renderGlobalAlerts() {
     ${!alerts.length ? emptySection('🔔', 'No hay alertas pendientes. ¡Todo en orden!') : `
       <div style="max-width: 800px; margin: 0 auto;">
         ${alerts.map(a => `
-          <div class="alert-card alert-${a.type}" onclick="setActiveVehicle('${a.vehicleId}'); window.location.hash='#/'">
+          <div class="alert-card alert-${a.type}" onclick="selectVehicleAndNavigate('${a.vehicleId}')">
             <div class="alert-card-icon">${a.days <= 0 ? '🚨' : '⚠️'}</div>
             <div class="alert-card-content">
               <div class="alert-card-vehicle">${a.vehicleName}</div>

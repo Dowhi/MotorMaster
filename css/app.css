@@ -2126,4 +2126,11 @@ html.light-mode .sidebar-search-input {
         background: var(--clr-accent);
     }
 }
+
+.alert-hover-item {
+    transition: background var(--transition-fast);
+}
+.alert-hover-item:hover {
+    background: var(--clr-surface-hover);
+}
 

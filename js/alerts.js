@@ -146,7 +146,7 @@ function renderAlertBanner(vehicleId) {
         const isExpired = a.isKm ? a.kmRemaining <= 0 : a.days <= 0;
         return `<div class="alert-item alert-${a.type}">
       <span class="alert-icon" aria-hidden="true">${isExpired ? '🚨' : '⚠️'}</span>
-      <span class="alert-msg"><strong>ALERTA${a.isKm ? ' KM' : ' DE PROXIMIDAD'}:</strong> ${a.message} — ${txt}</span>
+      <span class="alert-msg"><strong>ALERTA${a.isKm ? ' KM' : ' DE PROXIMIDAD'}:</strong> ${a.message}</span>
     </div>`;
     }).join('')
     + (hiddenCount > 0 ? `<div class="alert-item alert-warning" style="cursor:pointer;" onclick="window.location.hash='#/alerts'">ℹ️ Ver ${hiddenCount} alerta${hiddenCount > 1 ? 's' : ''} más →</div>` : '');
