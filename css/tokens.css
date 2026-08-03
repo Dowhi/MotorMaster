@@ -1,97 +1,110 @@
-/* ===== TOKENS.CSS — Única fuente de verdad del sistema de diseño ===== */
-/* Auditoría Premium 2026-08-02: Unificación de los 3 sistemas de tokens */
+/* ===== TOKENS.CSS — Sistema de Diseño Enterprise (Linear, VisionOS & Stripe Dashboard) ===== */
 
 :root {
-  /* ─── PALETA BASE ─────────────────────────────────── */
-  --clr-bg:        #0A1322;
-  --clr-surface:   #0F172A;
-  --clr-surface-2: #1E293B;
-  --clr-border:    #334155;
-  --color-scheme:  dark;
+  /* ─── PALETA BASE (Grafito Profundo & Titanio Oscuro) ───────────────── */
+  --clr-bg:             #090A0F;
+  --clr-surface:        #11141F;
+  --clr-surface-2:      #181C2B;
+  --clr-surface-hover:  #202538;
+  --clr-border:         rgba(255, 255, 255, 0.08);
+  --clr-border-subtle:  rgba(255, 255, 255, 0.04);
+  --color-scheme:       dark;
 
-  /* ─── ACENTO ──────────────────────────────────────── */
-  --clr-accent:      #00C2E0;
-  --clr-accent-dim:  rgba(0, 194, 224, 0.10);
-  --clr-accent-glow: rgba(0, 194, 224, 0.35);
+  /* ─── CRISTAL SUTIL (VisionOS) ─────────────────────── */
+  --clr-glass:          rgba(17, 20, 31, 0.75);
+  --clr-glass-border:   rgba(255, 255, 255, 0.09);
 
-  /* ─── SEMÁNTICA (unificada: danger = rojo, no magenta) */
-  --clr-success:     #22C55E;
-  --clr-success-dim: rgba(34, 197, 94, 0.12);
-  --clr-warning:     #F59E0B;
-  --clr-warning-dim: rgba(245, 158, 11, 0.12);
-  --clr-danger:      #EF4444;
-  --clr-danger-dim:  rgba(239, 68, 68, 0.12);
-  --clr-info:        #38BDF8;
-  --clr-info-dim:    rgba(56, 189, 248, 0.12);
+  /* ─── UNICO COLOR DE ACENTO RESERVADO (Titanium Azure) ──────────────── */
+  --clr-accent:         #0066FF;
+  --clr-accent-hover:   #0052CC;
+  --clr-accent-dim:     rgba(0, 102, 255, 0.12);
+  --clr-accent-glow:    rgba(0, 102, 255, 0.18);
 
-  /* ─── TEXTO ───────────────────────────────────────── */
-  --clr-text:       #F8FAFC;
-  --clr-text-2:     #CBD5E1;
-  --clr-text-muted: #64748B;
+  /* ─── SEMÁNTICA DISCRETA Y REFINADA ──────────────── */
+  --clr-success:        #10B981;
+  --clr-success-dim:    rgba(16, 185, 129, 0.12);
+  --clr-warning:        #F59E0B;
+  --clr-warning-dim:    rgba(245, 158, 11, 0.12);
+  --clr-danger:         #EF4444;
+  --clr-danger-dim:     rgba(239, 68, 68, 0.12);
+  --clr-info:           #38BDF8;
+  --clr-info-dim:       rgba(56, 189, 248, 0.12);
 
-  /* ─── TIPOGRAFÍA ──────────────────────────────────── */
-  --font-head:    'Inter', sans-serif;
-  --font-body:    'Roboto', sans-serif;
-  --font-display: 'Manrope', sans-serif;
+  /* ─── TEXTO Y TIPOGRAFÍA HIGH-CONTRAST ──────────────── */
+  --clr-text:          #F8FAFC;
+  --clr-text-2:        #94A3B8;
+  --clr-text-muted:    #64748B;
 
-  /* Escala modular (ratio 1.25 — Major Third) */
-  --text-xs:   0.75rem;   /* 12px */
-  --text-sm:   0.875rem;  /* 14px */
-  --text-base: 1rem;      /* 16px */
-  --text-lg:   1.25rem;   /* 20px */
-  --text-xl:   1.563rem;  /* 25px */
-  --text-2xl:  1.953rem;  /* 31px */
-  --text-3xl:  2.441rem;  /* 39px */
+  --font-head:         'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body:         'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display:      'Manrope', sans-serif;
 
-  /* ─── BORDER-RADIUS ───────────────────────────────── */
-  --r-xs:   4px;
-  --r-sm:   8px;
-  --r-btn:  10px;
-  --r-card: 16px;
-  --r-full: 9999px;
+  /* Escala tipográfica refinada */
+  --text-xs:           0.75rem;   /* 12px */
+  --text-sm:           0.8125rem; /* 13px */
+  --text-base:         0.9375rem; /* 15px */
+  --text-lg:           1.125rem;  /* 18px */
+  --text-xl:           1.375rem;  /* 22px */
+  --text-2xl:          1.75rem;   /* 28px */
+  --text-3xl:          2.25rem;   /* 36px */
 
-  /* ─── ESPACIADO ───────────────────────────────────── */
-  --sp-xs:  4px;
-  --sp-sm:  8px;
-  --sp-md:  12px;
-  --sp-lg:  16px;
-  --sp-xl:  24px;
-  --sp-xxl: 32px;
+  /* ─── BORDER-RADIUS & GEOMETRÍA PREPRECISA ────────────── */
+  --r-xs:              4px;
+  --r-sm:              6px;
+  --r-btn:             8px;
+  --r-card:            12px;
+  --r-modal:           16px;
+  --r-full:            9999px;
 
-  /* ─── SOMBRAS (con glow de acento) ───────────────── */
-  --shadow-card:   0 4px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 194, 224, 0.04);
-  --shadow-modal:  0 8px 48px rgba(0, 0, 0, 0.60), 0 0 0 1px rgba(0, 194, 224, 0.06);
-  --shadow-accent: 0 8px 32px rgba(0, 194, 224, 0.18);
+  /* ─── ESPACIADO GENEROSO ENTERPRISE ───────────────────── */
+  --sp-xs:             4px;
+  --sp-sm:             8px;
+  --sp-md:             12px;
+  --sp-lg:             16px;
+  --sp-xl:             24px;
+  --sp-xxl:            32px;
 
-  /* ─── CURVAS DE ANIMACIÓN ─────────────────────────── */
-  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);       /* Entradas */
-  --ease-in:     cubic-bezier(0.55, 0, 1, 0.45);       /* Salidas */
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);    /* Interactivos con rebote */
-  --ease-std:    cubic-bezier(0.4, 0, 0.2, 1);         /* Transiciones estándar */
+  /* ─── SOMBRAS Y ELEVACIÓN EN CAPAS ────────────────────── */
+  --shadow-sm:         0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-card:       0 4px 20px -2px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-hover:      0 8px 30px -4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  --shadow-modal:      0 24px 60px -12px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --shadow-accent:     0 4px 20px rgba(0, 102, 255, 0.25);
 
-  /* ─── LAYOUT ──────────────────────────────────────── */
-  --sidebar-w: 260px;
-  --topbar-h:  0px;
+  /* ─── MOVIMIENTO Y TRANSICIONES (150ms suave) ───────── */
+  --transition-fast:   150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth:       cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ─── LAYOUT DIMENSIONS ───────────────────────────────── */
+  --sidebar-w:         250px;
+  --topbar-h:          0px;
 }
 
-/* ─── MODO CLARO ──────────────────────────────────────── */
+/* ─── MODO CLARO (Titanium Silver & Pearl) ──────────────── */
 html.light-mode {
-  --clr-bg:        #F1F5F9;
-  --clr-surface:   #FFFFFF;
-  --clr-surface-2: #F8FAFC;
-  --clr-border:    #CBD5E1;
+  --clr-bg:            #F4F5F8;
+  --clr-surface:       #FFFFFF;
+  --clr-surface-2:     #F8FAFC;
+  --clr-surface-hover: #F1F5F9;
+  --clr-border:        rgba(0, 0, 0, 0.08);
+  --clr-border-subtle: rgba(0, 0, 0, 0.04);
+  --color-scheme:      light;
 
-  --clr-accent:      #007FA3;
-  --clr-accent-dim:  rgba(0, 127, 163, 0.10);
-  --clr-accent-glow: rgba(0, 127, 163, 0.20);
+  --clr-glass:          rgba(255, 255, 255, 0.82);
+  --clr-glass-border:   rgba(0, 0, 0, 0.08);
 
-  --clr-text:       #0F172A;
-  --clr-text-2:     #334155;
-  --clr-text-muted: #64748B;
+  --clr-accent:         #0052CC;
+  --clr-accent-hover:   #003E99;
+  --clr-accent-dim:     rgba(0, 82, 204, 0.08);
+  --clr-accent-glow:    rgba(0, 82, 204, 0.14);
 
-  --shadow-card:   0 4px 20px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0,0,0,0.04);
-  --shadow-modal:  0 8px 40px rgba(0, 0, 0, 0.15);
-  --shadow-accent: 0 6px 24px rgba(0, 127, 163, 0.18);
+  --clr-text:          #0F172A;
+  --clr-text-2:        #475569;
+  --clr-text-muted:    #64748B;
 
-  --color-scheme: light;
+  --shadow-sm:         0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-card:       0 4px 16px -2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --shadow-hover:      0 8px 24px -4px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  --shadow-modal:      0 20px 50px -10px rgba(0, 0, 0, 0.2);
+  --shadow-accent:     0 4px 16px rgba(0, 82, 204, 0.2);
 }

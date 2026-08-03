@@ -3251,6 +3251,157 @@ function openPromptModal(label, onSubmit, defaultValue = '') {
   setTimeout(() => input.focus(), 50);
 }
 
+/* ======================== LINEAR COMMAND PALETTE (CTRL+K) ======================== */
+let cmdSelectedIndex = 0;
+let cmdItems = [];
+
+function openCommandPalette() {
+  const overlay = document.getElementById('cmd-palette-overlay');
+  const input = document.getElementById('cmd-palette-input');
+  if (!overlay || !input) return;
+  overlay.classList.remove('hidden');
+  input.value = '';
+  cmdSelectedIndex = 0;
+  renderCommandPaletteResults('');
+  setTimeout(() => input.focus(), 50);
+}
+
+function closeCommandPalette() {
+  const overlay = document.getElementById('cmd-palette-overlay');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+function renderCommandPaletteResults(query = '') {
+  const container = document.getElementById('cmd-palette-results');
+  if (!container) return;
+
+  const q = query.toLowerCase().trim();
+  const state = getState();
+
+  const navigationCommands = [
+    { title: 'Dashboard Resumen', icon: 'grid_view', route: '#/', category: 'Navegación' },
+    { title: 'Garaje & Flota de Vehículos', icon: 'directions_car', route: '#/garage', category: 'Navegación' },
+    { title: 'Calendario Global de Vencimientos', icon: 'calendar_month', route: '#/calendar', category: 'Navegación' },
+    { title: 'Alertas y Notificaciones', icon: 'notifications_active', route: '#/alerts', category: 'Navegación' },
+    { title: 'Cronología e Historial', icon: 'history_toggle_off', route: '#/timeline', category: 'Navegación' },
+    { title: 'Mantenimientos y Revisiones', icon: 'build', route: '#/revisiones', category: 'Navegación' },
+    { title: 'Averías & Reparaciones Taller', icon: 'warning', route: '#/averias', category: 'Navegación' },
+    { title: 'Recambios & Piezas Repuesto', icon: 'inventory_2', route: '#/recambios', category: 'Navegación' },
+    { title: 'Checklist de Ruta / Viaje', icon: 'checklist', route: '#/trip', category: 'Navegación' },
+    { title: 'Seguros & Pólizas', icon: 'verified_user', route: '#/seguro', category: 'Navegación' },
+    { title: 'Inspecciones Técnicas (ITV)', icon: 'fact_check', route: '#/itv', category: 'Navegación' },
+    { title: 'Multas y Sanciones', icon: 'gavel', route: '#/multas', category: 'Navegación' },
+    { title: 'Guantera Digital y Adjuntos', icon: 'folder_open', route: '#/guantera', category: 'Navegación' },
+    { title: 'Otros Gastos y Documentos', icon: 'receipt_long', route: '#/otros', category: 'Navegación' },
+    { title: 'Ajustes & Exportación de Datos', icon: 'settings', route: '#/settings', category: 'Navegación' }
+  ];
+
+  const vehicleCommands = (state.vehicles || []).map(v => ({
+    title: `Seleccionar ${v.marca} ${v.modelo} (${v.matricula || 'Sin matrícula'})`,
+    icon: 'directions_car',
+    action: () => { setActiveVehicle(v.id); router(); showToast(`Vehículo activo: ${v.marca} ${v.modelo}`); },
+    category: 'Flota'
+  }));
+
+  const allItems = [...navigationCommands, ...vehicleCommands];
+  cmdItems = allItems.filter(item => item.title.toLowerCase().includes(q) || item.category.toLowerCase().includes(q));
+
+  if (!cmdItems.length) {
+    container.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--clr-text-muted); font-size: 0.85rem;">Sin resultados para "${escapeHtml(q)}"</div>`;
+    return;
+  }
+
+  let html = '';
+  let lastCategory = '';
+
+  cmdItems.forEach((item, index) => {
+    if (item.category !== lastCategory) {
+      lastCategory = item.category;
+      html += `<div class="cmd-group-title">${item.category}</div>`;
+    }
+    const isSelected = index === cmdSelectedIndex;
+    html += `
+      <div class="cmd-item ${isSelected ? 'selected' : ''}" data-index="${index}">
+        <div class="cmd-item-left">
+          <span class="material-symbols-outlined text-sm">${item.icon}</span>
+          <span>${escapeHtml(item.title)}</span>
+        </div>
+        <kbd class="cmd-kbd">↵</kbd>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('.cmd-item').forEach(el => {
+    el.onclick = () => {
+      const idx = parseInt(el.dataset.index);
+      executeCommand(idx);
+    };
+  });
+}
+
+function executeCommand(index) {
+  const item = cmdItems[index];
+  if (!item) return;
+  closeCommandPalette();
+  if (item.route) {
+    window.location.hash = item.route;
+  } else if (item.action) {
+    item.action();
+  }
+}
+
+function setupCommandPaletteEvents() {
+  const overlay = document.getElementById('cmd-palette-overlay');
+  const input = document.getElementById('cmd-palette-input');
+  const trigger = document.getElementById('cmd-trigger');
+
+  if (trigger) trigger.onclick = openCommandPalette;
+
+  if (overlay) {
+    overlay.onclick = e => { if (e.target === overlay) closeCommandPalette(); };
+  }
+
+  if (input) {
+    input.oninput = e => {
+      cmdSelectedIndex = 0;
+      renderCommandPaletteResults(e.target.value);
+    };
+
+    input.onkeydown = e => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        cmdSelectedIndex = Math.min(cmdSelectedIndex + 1, cmdItems.length - 1);
+        renderCommandPaletteResults(input.value);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        cmdSelectedIndex = Math.max(cmdSelectedIndex - 1, 0);
+        renderCommandPaletteResults(input.value);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        executeCommand(cmdSelectedIndex);
+      } else if (e.key === 'Escape') {
+        closeCommandPalette();
+      }
+    };
+  }
+
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openCommandPalette();
+    }
+    if (e.altKey && e.key.toLowerCase() === 't') {
+      e.preventDefault();
+      toggleTheme();
+    }
+    if (e.key === 'Escape') {
+      closeCommandPalette();
+    }
+  });
+}
+
 /* ======================== INIT ======================== */
 window.addEventListener('hashchange', router);
 document.getElementById('modal-close').onclick = closeModal;
@@ -3274,12 +3425,12 @@ function applyTheme(theme) {
   if (theme === 'light') {
     html.classList.add('light-mode');
     html.classList.remove('dark');
-    if (themeIcon) themeIcon.textContent = '☀️';
+    if (themeIcon) themeIcon.textContent = 'light_mode';
     if (themeText) themeText.textContent = 'Modo Claro';
   } else {
     html.classList.remove('light-mode');
     html.classList.add('dark');
-    if (themeIcon) themeIcon.textContent = '🌙';
+    if (themeIcon) themeIcon.textContent = 'dark_mode';
     if (themeText) themeText.textContent = 'Modo Oscuro';
   }
 }
@@ -3291,9 +3442,10 @@ function toggleTheme() {
   applyTheme(newTheme);
 }
 
-// Search and Workshop listeners
+// Search, Command Palette and Workshop listeners
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  setupCommandPaletteEvents();
 
   const themeBtn = document.getElementById('theme-toggle');
   if (themeBtn) themeBtn.onclick = toggleTheme;
@@ -3305,3 +3457,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 router();
+

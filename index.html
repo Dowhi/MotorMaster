@@ -102,20 +102,20 @@
         <span>Motor<span class="logo-accent">Master</span></span>
       </div>
       <div id="header-license-plate" class="header-license-plate"></div>
-      <button class="menu-toggle" id="menu-toggle">☰</button>
+      <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menú">☰</button>
     </header>
 
     <!-- Sidebar Overlay (click to close menu) -->
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <!-- Mobile Bottom Navigation -->
+    <!-- Mobile Bottom Navigation (Floating VisionOS Glass Bar) -->
     <nav class="mobile-bottom-nav">
       <a href="#/" class="bottom-nav-item active" data-route="">
-        <span class="material-symbols-outlined">dashboard</span>
-        <span>Home</span>
+        <span class="material-symbols-outlined">space_dashboard</span>
+        <span>Inicio</span>
       </a>
       <a href="#/garage" class="bottom-nav-item" data-route="garage">
-        <span class="material-symbols-outlined">garage</span>
+        <span class="material-symbols-outlined">directions_car</span>
         <span>Garaje</span>
       </a>
       <a href="#/alerts" class="bottom-nav-item" data-route="alerts">
@@ -123,110 +123,114 @@
         <span>Alertas</span>
         <span id="mobile-alert-badge" class="bottom-nav-badge hidden">0</span>
       </a>
-      <a href="#/timeline" class="bottom-nav-item" data-route="timeline">
-        <span class="material-symbols-outlined">history</span>
-        <span>Historial</span>
+      <a href="#/revisiones" class="bottom-nav-item" data-route="revisiones">
+        <span class="material-symbols-outlined">build</span>
+        <span>Taller</span>
+      </a>
+      <a href="#/guantera" class="bottom-nav-item" data-route="guantera">
+        <span class="material-symbols-outlined">folder_open</span>
+        <span>Docs</span>
       </a>
     </nav>
 
-    <!-- ===== SIDEBAR ===== -->
+    <!-- ===== SIDEBAR ENTERPRISE ===== -->
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <span class="logo-icon">🔧</span>
+        <div class="logo-badge">🔧</div>
         <span>Motor<span class="logo-accent">Master</span></span>
       </div>
 
       <!-- User Profile Account -->
-      <div id="user-profile" class="px-4 mb-4"></div>
-      <div id="vehicle-selector" class="vehicle-selector"></div>
+      <div id="user-profile" class="px-3 mb-2"></div>
+      <div id="vehicle-selector" class="vehicle-selector px-3"></div>
 
-      <!-- Búscador Global -->
-      <div class="sidebar-search-wrap">
+      <!-- Linear-style Quick Command / Search Trigger -->
+      <div class="sidebar-search-wrap" id="cmd-trigger" role="button" tabindex="0" title="Abrir paleta de comandos (Ctrl+K)">
         <span class="material-symbols-outlined search-icon">search</span>
-        <input type="text" id="global-search" class="sidebar-search-input" placeholder="Buscar en todo..." autocomplete="off" aria-label="Buscar en todos los módulos">
+        <input type="text" id="global-search" class="sidebar-search-input" placeholder="Buscar o comando..." autocomplete="off" aria-label="Buscar en todos los módulos">
+        <kbd class="cmd-kbd">⌘K</kbd>
       </div>
 
-      <!-- Navigation -->
+      <!-- Navigation Reestructurado por Dominios -->
       <nav class="sidebar-nav">
 
+        <!-- 1. VISTA GENERAL -->
         <div class="nav-group">
-          <span class="nav-group-label">Principal</span>
+          <span class="nav-group-label">Vista General</span>
           <a href="#/" class="nav-item" data-route="">
-            <span class="nav-icon">📊</span><span>Dashboard</span>
-          </a>
-          <a href="#/alerts" class="nav-item" data-route="alerts">
-            <span class="nav-icon">🔔</span><span>Notificaciones</span>
-            <span id="global-alert-count" class="notification-badge hidden">0</span>
-          </a>
-          <a href="#/calendar" class="nav-item" data-route="calendar">
-            <span class="nav-icon">📅</span><span>Calendario Global</span>
+            <span class="material-symbols-outlined nav-icon">grid_view</span><span>Dashboard</span>
           </a>
           <a href="#/garage" class="nav-item" data-route="garage">
-            <span class="nav-icon">🚗</span><span>Garaje</span>
+            <span class="material-symbols-outlined nav-icon">directions_car</span><span>Garaje & Flota</span>
+          </a>
+          <a href="#/calendar" class="nav-item" data-route="calendar">
+            <span class="material-symbols-outlined nav-icon">calendar_month</span><span>Calendario</span>
+          </a>
+          <a href="#/alerts" class="nav-item" data-route="alerts">
+            <span class="material-symbols-outlined nav-icon">notifications_active</span><span>Alertas</span>
+            <span id="global-alert-count" class="notification-badge hidden">0</span>
           </a>
           <a href="#/timeline" class="nav-item" data-route="timeline">
-            <span class="nav-icon">⏳</span><span>Cronología</span>
-          </a>
-          <a href="#/trip" class="nav-item" data-route="trip">
-            <span class="nav-icon">📋</span><span>Checklist Viaje</span>
+            <span class="material-symbols-outlined nav-icon">history_toggle_off</span><span>Cronología</span>
           </a>
         </div>
 
+        <!-- 2. OPERACIONES Y TALLER -->
         <div class="nav-group">
-          <span class="nav-group-label">Vehículo</span>
+          <span class="nav-group-label">Operaciones & Taller</span>
           <a href="#/revisiones" class="nav-item" data-route="revisiones">
-            <span class="nav-icon">🔩</span><span>Revisiones</span>
+            <span class="material-symbols-outlined nav-icon">build</span><span>Revisiones</span>
           </a>
           <a href="#/averias" class="nav-item" data-route="averias">
-            <span class="nav-icon">⚠️</span><span>Averías</span>
+            <span class="material-symbols-outlined nav-icon">warning</span><span>Averías & Taller</span>
           </a>
           <a href="#/recambios" class="nav-item" data-route="recambios">
-            <span class="nav-icon">📦</span><span>Recambios</span>
+            <span class="material-symbols-outlined nav-icon">inventory_2</span><span>Recambios & Piezas</span>
+          </a>
+          <a href="#/trip" class="nav-item" data-route="trip">
+            <span class="material-symbols-outlined nav-icon">checklist</span><span>Checklist Viaje</span>
           </a>
         </div>
 
+        <!-- 3. DOCUMENTACIÓN & LEGAL -->
         <div class="nav-group">
-          <span class="nav-group-label">Documentación</span>
-          <a href="#/itv" class="nav-item" data-route="itv">
-            <span class="nav-icon">🔍</span><span>ITV</span>
-          </a>
+          <span class="nav-group-label">Documentación & Legal</span>
           <a href="#/seguro" class="nav-item" data-route="seguro">
-            <span class="nav-icon">🛡️</span><span>Seguro</span>
+            <span class="material-symbols-outlined nav-icon">verified_user</span><span>Seguros & Recibos</span>
+          </a>
+          <a href="#/itv" class="nav-item" data-route="itv">
+            <span class="material-symbols-outlined nav-icon">fact_check</span><span>Inspección ITV</span>
           </a>
           <a href="#/multas" class="nav-item" data-route="multas">
-            <span class="nav-icon">📋</span><span>Multas</span>
-          </a>
-          <a href="#/otros" class="nav-item" data-route="otros">
-            <span class="nav-icon">📁</span><span>Otros</span>
+            <span class="material-symbols-outlined nav-icon">gavel</span><span>Multas & Sanciones</span>
           </a>
           <a href="#/guantera" class="nav-item" data-route="guantera">
-            <span class="nav-icon">📁</span><span>Guantera</span>
+            <span class="material-symbols-outlined nav-icon">folder_open</span><span>Guantera Digital</span>
+          </a>
+          <a href="#/otros" class="nav-item" data-route="otros">
+            <span class="material-symbols-outlined nav-icon">receipt_long</span><span>Otros Gastos</span>
+          </a>
+        </div>
+
+        <!-- 4. SISTEMA -->
+        <div class="nav-group">
+          <span class="nav-group-label">Sistema</span>
+          <a href="#/settings" class="nav-item" data-route="settings">
+            <span class="material-symbols-outlined nav-icon">settings</span><span>Ajustes & Datos</span>
           </a>
         </div>
 
       </nav>
 
-      <footer class="sidebar-footer">
-        <a href="#/settings" class="nav-item" data-route="settings">
-          <span class="nav-icon">⚙️</span><span>Ajustes & Datos</span>
-        </a>
-        <a href="https://github.com" target="_blank" class="nav-item">
-          <span class="nav-icon">❓</span><span>Ayuda</span>
-        </a>
-      </footer>
-
-      <!-- Theme Toggle -->
-      <div class="px-4 mt-auto mb-4">
+      <!-- Theme Toggle Minimalista -->
+      <div class="px-3 mt-auto mb-3">
         <button id="theme-toggle"
-          class="flex items-center gap-3 w-full p-2.5 rounded-xl border border-[--clr-border] hover:bg-[--clr-surface-2] transition-all group">
-          <div
-            class="w-8 h-8 rounded-lg bg-[--clr-surface-2] group-hover:bg-[--clr-accent-dim] flex items-center justify-center transition-colors">
-            <span id="theme-icon" class="text-base">🌙</span>
+          class="theme-toggle-btn">
+          <div class="flex items-center gap-2.5">
+            <span id="theme-icon" class="material-symbols-outlined text-sm">dark_mode</span>
+            <span id="theme-text" class="text-xs font-medium">Modo Oscuro</span>
           </div>
-          <div class="flex flex-col items-start">
-            <span id="theme-text-top" class="text-[10px] font-bold uppercase tracking-wider text-muted">Tema</span>
-            <span id="theme-text" class="text-xs font-semibold">Modo Oscuro</span>
-          </div>
+          <span class="text-[10px] text-muted font-mono uppercase tracking-wider">Alt+T</span>
         </button>
       </div>
 
@@ -240,7 +244,26 @@
 
   </div><!-- /.app-shell -->
 
-  <!-- ===== MODAL ===== -->
+  <!-- ===== MODAL PALETA DE COMANDOS ESTILO LINEAR (CTRL+K) ===== -->
+  <div class="cmd-palette-overlay hidden" id="cmd-palette-overlay" role="dialog" aria-modal="true">
+    <div class="cmd-palette-modal">
+      <div class="cmd-palette-header">
+        <span class="material-symbols-outlined text-slate-400">search</span>
+        <input type="text" id="cmd-palette-input" placeholder="Escribe un comando o busca en tu garaje..." autocomplete="off">
+        <kbd class="cmd-kbd">ESC</kbd>
+      </div>
+      <div class="cmd-palette-results" id="cmd-palette-results">
+        <!-- Generado dinámicamente -->
+      </div>
+      <div class="cmd-palette-footer">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> para navegar</span>
+        <span><kbd>↵</kbd> para seleccionar</span>
+        <span><kbd>ESC</kbd> para cerrar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL STANDARD ===== -->
   <div class="modal-overlay hidden" id="modal-overlay">
     <div class="modal" id="modal">
       <div class="modal-header">
