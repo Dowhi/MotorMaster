@@ -923,7 +923,7 @@ function renderDashboard() {
   const recs = getRecambiosByVehicle(vid);
   const multas = getMultasByVehicle(vid);
   const pending = multas.filter(m => m.estado === 'Pendiente');
-  const alerts = collectAlerts(vid, null);
+  const alerts = collectAlerts(vid, 30);
 
   const filterYear = selectedYear.toString();
   const cats = [
@@ -2342,10 +2342,14 @@ function renderSeguro() {
         const totalPagadoRecibos = (s.recibos || []).reduce((acc, r) => acc + parseFloat(r.importe || 0), 0);
         const linkedDoc = docs.find(d => (d.linkedTo?.type === 'seguro' && d.linkedTo?.id === s.id) || (d.categoria === 'Seguro / Póliza' && d.nombre.toLowerCase().includes(s.compania.toLowerCase())));
 
+        const nextPay = typeof getNextSeguroPaymentInfo === 'function' ? getNextSeguroPaymentInfo(s) : null;
+        const targetDate = nextPay ? nextPay.date : s.fechaVencimiento;
+        const payLabel = nextPay ? nextPay.label.split(' - ')[0] : 'Renovación';
+
         return `<tr>
         <td data-label="Compañía"><strong>${escapeHtml(s.compania)}</strong><br><small class="text-muted">Pól: ${escapeHtml(s.poliza || 'S/N')}</small></td>
         <td data-label="Cobertura">${escapeHtml(s.tipoSG)}<br><small class="text-muted">${escapeHtml(s.tipoPol || '—')}</small></td>
-        <td data-label="Precio" class="gasto">${fmt.currency(s.precio)}<br><small class="text-muted">Pago: ${escapeHtml(s.tipoPago)}</small></td>
+        <td data-label="Precio" class="gasto">${fmt.currency(s.precio)}<br><small class="text-muted">Pago: ${escapeHtml(s.tipoPago || 'Anual')}</small></td>
         <td data-label="Recibos">
           <button class="btn btn-xs btn-secondary" onclick="openRecibosSeguroModal('${s.id}')" style="font-size:0.75rem">
             🧾 ${numRecibos} recibo${numRecibos !== 1 ? 's' : ''} (${fmt.currency(totalPagadoRecibos)})
@@ -2356,7 +2360,10 @@ function renderSeguro() {
             ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewDocument('${linkedDoc.id}')" title="Ver póliza guardada en Guantera">📄 Póliza Digital</button>`
             : `<button class="btn btn-xs btn-adjunto-pill" onclick="openDocumentoModalSeguro('${s.id}')" title="Subir póliza a Guantera">+ 📄 Adjuntar Póliza</button>`}
         </td>
-        <td data-label="Vencimiento">${fmt.date(s.fechaVencimiento)}</td>
+        <td data-label="Próximo Pago / Recibo">
+          <div><strong>${fmt.date(targetDate)}</strong> ${daysBadge(targetDate)}</div>
+          <small class="text-muted">${escapeHtml(payLabel)}</small>
+        </td>
         <td class="text-right" style="white-space:nowrap">
             <div class="flex gap-2 justify-end">
               <button class="btn btn-ghost btn-xs" data-edit="seguro" data-id="${s.id}" title="Editar seguro" style="border:1px solid var(--clr-border)">✏️</button>
@@ -2894,7 +2901,7 @@ function renderCalendar() {
 function updateGlobalAlertBadge() {
   const badge = document.getElementById('global-alert-count');
   if (!badge) return;
-  const allAlerts = collectAllGlobalAlerts(null);
+  const allAlerts = collectAllGlobalAlerts(30);
   const count = allAlerts.length;
   if (count > 0) {
     badge.textContent = count;
@@ -2906,7 +2913,7 @@ function updateGlobalAlertBadge() {
 
 function renderGlobalAlerts() {
   const c = document.getElementById('main-content');
-  const alerts = collectAllGlobalAlerts(null);
+  const alerts = collectAllGlobalAlerts(30);
 
   c.innerHTML = `
     ${renderPageBack()}

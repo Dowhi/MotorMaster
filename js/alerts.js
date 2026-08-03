@@ -102,14 +102,76 @@ function collectKmAlerts(vehicleId) {
     return alerts.sort((a, b) => a.kmRemaining - b.kmRemaining);
 }
 
+/**
+ * Calculates the next payment date & label for an insurance policy
+ * based on its payment frequency (Anual, Semestral, Trimestral, Mensual) and paid receipts.
+ */
+function getNextSeguroPaymentInfo(s) {
+    const mainDueDateStr = s.fechaVencimiento || s.fechaRenovacion;
+    if (!mainDueDateStr) return null;
+
+    const freq = (s.tipoPago || s.frecuenciaPago || s.frecuencia || 'Anual').toLowerCase();
+    let monthsStep = 12;
+    if (freq.includes('semestral')) monthsStep = 6;
+    else if (freq.includes('trimestral')) monthsStep = 3;
+    else if (freq.includes('mensual')) monthsStep = 1;
+
+    // Si la frecuencia es Anual (12 meses)
+    if (monthsStep === 12) {
+        return {
+            date: mainDueDateStr,
+            label: `Seguro: renovación anual (${s.compania || 'Seguro'})`
+        };
+    }
+
+    // Generar plazos dentro del periodo anual
+    const mainDueDate = new Date(mainDueDateStr + 'T00:00:00');
+    const startDate = new Date(mainDueDate);
+    startDate.setFullYear(startDate.getFullYear() - 1); // Inicio del ciclo anual
+
+    const subPeriodDates = [];
+    let curr = new Date(startDate);
+
+    while (curr < mainDueDate) {
+        curr = new Date(curr);
+        curr.setMonth(curr.getMonth() + monthsStep);
+        const dStr = curr.toISOString().split('T')[0];
+        if (dStr <= mainDueDateStr) {
+            subPeriodDates.push(dStr);
+        }
+    }
+
+    // Contar cuántos recibos han sido registrados en s.recibos
+    const paidCount = (s.recibos || []).length;
+    const totalPlazos = subPeriodDates.length;
+
+    if (paidCount < totalPlazos) {
+        const nextDate = subPeriodDates[paidCount];
+        const numPlazo = paidCount + 1;
+        const labelPeriodo = monthsStep === 6 ? 'Semestral' : monthsStep === 3 ? 'Trimestral' : 'Mensual';
+
+        return {
+            date: nextDate,
+            label: `Seguro: recibo ${labelPeriodo} (${numPlazo}/${totalPlazos}) - ${s.compania || 'Seguro'}`
+        };
+    }
+
+    // Si ya pagó todos los plazos del año
+    return {
+        date: mainDueDateStr,
+        label: `Seguro: renovación anual (${s.compania || 'Seguro'})`
+    };
+}
+
 /* ─── DATE-BASED ALERT DETECTION ───────────────────────── */
 function collectAlerts(vehicleId, threshold = 30) {
     const state = getState();
     const alerts = [];
+    const effThreshold = (threshold === null || threshold === undefined) ? 30 : threshold;
 
     function pushAlert(message, dateStr) {
         const days = getDaysUntil(dateStr);
-        if (days !== null && (threshold === null || days <= threshold)) {
+        if (days !== null && days <= effThreshold) {
             alerts.push({ message, days, date: dateStr, type: days <= 7 ? 'danger' : 'warning' });
         }
     }
@@ -122,12 +184,15 @@ function collectAlerts(vehicleId, threshold = 30) {
         pushAlert('ITV vence', latestItv.fechaVencimiento);
     }
 
-    // 2. Seguro: Solo la póliza con vencimiento más lejano/reciente por vehículo
+    // 2. Seguro: Evaluar según frecuencia de pago (Anual, Semestral, Trimestral, Mensual) y recibos abonados
     const vehicleSeguros = state.seguro.filter(s => s.vehicleId === vehicleId && (s.fechaVencimiento || s.fechaRenovacion));
     if (vehicleSeguros.length) {
-        vehicleSeguros.sort((a, b) => (b.fechaVencimiento || b.fechaRenovacion) > (a.fechaVencimiento || a.fechaRenovacion) ? 1 : -1);
-        const latestSeg = vehicleSeguros[0];
-        pushAlert(`Seguro: renovar (${latestSeg.compania})`, latestSeg.fechaVencimiento || latestSeg.fechaRenovacion);
+        vehicleSeguros.forEach(s => {
+            const info = getNextSeguroPaymentInfo(s);
+            if (info && info.date) {
+                pushAlert(info.label, info.date);
+            }
+        });
     }
 
     // 3. Revisiones: Agrupar por tipo de operación y tomar únicamente la fecha próxima más reciente
