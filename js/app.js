@@ -509,7 +509,7 @@ function renderGuantera() {
     </div>
     
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
-      ${categories.map(cat => `<button class="btn btn-xs ${guanteraFilter === cat ? 'btn-primary' : 'btn-ghost'}" onclick="guanteraFilter='${cat}';renderGuantera();" style="border:1px solid var(--clr-border)">${catLabels[cat] || cat}</button>`).join('')}
+      ${categories.map(cat => `<button class="btn btn-xs ${guanteraFilter === cat ? 'btn-primary' : 'btn-ghost'}" onclick="setGuanteraFilter('${cat}')" style="border:1px solid var(--clr-border)">${catLabels[cat] || cat}</button>`).join('')}
     </div>
 
     ${!docs.length ? emptySection('📁', 'No hay documentos en esta categoría') : `
@@ -765,6 +765,45 @@ function viewAdjuntoModal(title, fileData, fileType = '') {
     <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cerrar</button>
   </div>`;
   openModal(`📄 ${escapeHtml(title)}`, `<div>${content}${footer}</div>`);
+}
+
+/* Lookups seguros para adjuntos usando ID en lugar de pasar cadenas Base64 o JSON en atributos HTML */
+function viewItvAdjunto(id) {
+  const i = getState().itv.find(x => x.id === id);
+  if (i && i.adjunto) {
+    viewAdjuntoModal(`Informe ITV ${fmt.date(i.fechaInspeccion)}`, i.adjunto.fileData, i.adjunto.fileType || '');
+  }
+}
+
+function viewReciboSeguroAdjunto(seguroId, reciboId) {
+  const s = getState().seguro.find(x => x.id === seguroId);
+  const r = s?.recibos?.find(x => x.id === reciboId);
+  if (r && r.adjuntoData) {
+    viewAdjuntoModal(`Recibo ${r.concepto || ''}`, r.adjuntoData, r.fileType || '');
+  }
+}
+
+function viewMultaAdjunto(id) {
+  const m = getState().multas.find(x => x.id === id);
+  if (m && m.adjunto) {
+    viewAdjuntoModal(`Justificante Multa ${m.expediente || ''}`, m.adjunto.fileData, m.adjunto.fileType || '');
+  }
+}
+
+function viewOtrosAdjunto(id) {
+  const o = getState().otros.find(x => x.id === id);
+  if (o && o.adjunto) {
+    viewAdjuntoModal(`Recibo ${o.descripcion || ''}`, o.adjunto.fileData, o.adjunto.fileType || '');
+  }
+}
+
+function setGuanteraFilter(cat) {
+  guanteraFilter = cat;
+  renderGuantera();
+}
+
+function openDocumentoModalSeguro(seguroId) {
+  openDocumentoModal(null, renderSeguro, 'Seguro / Póliza', { type: 'seguro', id: seguroId });
 }
 
 /* Visor de foto de avería */
@@ -2128,7 +2167,7 @@ function renderITV() {
         <td data-label="Informe / Recibo">
           ${numRecibo ? `<div style="font-weight:700;font-size:0.85rem;color:var(--clr-text-main)">🧾 ${numRecibo}</div>` : ''}
           ${i.adjunto
-            ? `<button class="btn btn-xs btn-adjunto-pill" style="margin-top:4px" onclick="viewAdjuntoModal('Informe ITV ${fmt.date(i.fechaInspeccion)}', '${i.adjunto.fileData}', '${i.adjunto.fileType}')">📄 Ver Informe</button>`
+            ? `<button class="btn btn-xs btn-adjunto-pill" style="margin-top:4px" onclick="viewItvAdjunto('${i.id}')">📄 Ver Informe</button>`
             : linkedDoc
               ? `<button class="btn btn-xs btn-adjunto-pill" style="margin-top:4px" onclick="viewDocument('${linkedDoc.id}')">📄 Ver Guantera</button>`
               : !numRecibo ? '<span class="text-muted">—</span>' : ''}
@@ -2320,7 +2359,7 @@ function renderSeguro() {
         <td data-label="Póliza Digital">
           ${linkedDoc
             ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewDocument('${linkedDoc.id}')" title="Ver póliza guardada en Guantera">📄 Póliza Digital</button>`
-            : `<button class="btn btn-xs btn-adjunto-pill" onclick="openDocumentoModal(null, renderSeguro, 'Seguro / Póliza', {type:'seguro',id:'${s.id}'})" title="Subir póliza a Guantera">+ 📄 Adjuntar Póliza</button>`}
+            : `<button class="btn btn-xs btn-adjunto-pill" onclick="openDocumentoModalSeguro('${s.id}')" title="Subir póliza a Guantera">+ 📄 Adjuntar Póliza</button>`}
         </td>
         <td data-label="Vencimiento">${fmt.date(s.fechaVencimiento)}</td>
         <td class="text-right" style="white-space:nowrap">
@@ -2488,7 +2527,7 @@ function openRecibosSeguroModal(seguroId) {
             <td><strong>${escapeHtml(r.concepto)}</strong></td>
             <td><code>${escapeHtml(r.numRecibo||'—')}</code></td>
             <td class="gasto">${fmt.currency(r.importe)}</td>
-            <td>${r.adjuntoData ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewAdjuntoModal('Recibo ${escapeHtml(r.concepto)}', '${r.adjuntoData}', '${r.fileType||''}')">📄 Ver</button>` : '—'}</td>
+            <td>${r.adjuntoData ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewReciboSeguroAdjunto('${seg.id}','${r.id}')">📄 Ver</button>` : '—'}</td>
             <td class="text-right"><button class="btn btn-danger btn-xs" onclick="deleteReciboSeguro('${seg.id}','${r.id}'); openRecibosSeguroModal('${seg.id}'); renderSeguro();">✕</button></td>
           </tr>`).join('')}</tbody>
         </table>`}
@@ -2584,7 +2623,7 @@ function renderMultas() {
           <strong class="${m.estado === 'Pagada' ? 'gasto' : 'text-primary'}">${m.estado === 'Pagada' ? `Pagado: ${fmt.currency(m.importePagado)}` : `Pend: ${fmt.currency(m.importe)}`}</strong>
         </td>
         <td data-label="Justificante">
-          ${m.adjunto ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewAdjuntoModal('Justificante Multa ${escapeHtml(m.expediente||'')}', '${m.adjunto.fileData}', '${m.adjunto.fileType}')">📄 Ver Justificante</button>` : '—'}
+          ${m.adjunto ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewMultaAdjunto('${m.id}')">📄 Ver Justificante</button>` : '—'}
         </td>
         <td data-label="Estado">
           ${stateBadge(m.estado)}<br>
@@ -2763,7 +2802,7 @@ function renderOtros() {
         <td data-label="Descripción"><strong>${escapeHtml(o.descripcion)}</strong></td>
         <td data-label="Importe" class="gasto">${fmt.currency(o.importe)}</td>
         <td data-label="Recibo">
-          ${o.adjunto ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewAdjuntoModal('Recibo ${escapeHtml(o.descripcion)}', '${o.adjunto.fileData}', '${o.adjunto.fileType}')">📄 Ver Recibo</button>` : '—'}
+          ${o.adjunto ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewOtrosAdjunto('${o.id}')">📄 Ver Recibo</button>` : '—'}
         </td>
         <td data-label="Vencimiento">${fmt.date(o.fechaVencimiento)}</td>
         <td data-label="Estado">${daysBadge(o.fechaVencimiento)}</td>
