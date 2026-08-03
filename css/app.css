@@ -1253,36 +1253,192 @@ input[type=number] {
     color: var(--clr-text-muted);
 }
 
-/* ======================== WORKSHOP MODE ======================== */
+/* ======================== WORKSHOP HUD ULTRA PREMIUM ======================== */
 body.workshop-mode .sidebar,
 body.workshop-mode .mobile-header,
-body.workshop-mode .alert-banner,
-body.workshop-mode .dashboard-grid,
-body.workshop-mode .summary-grid,
-body.workshop-mode .page-sub,
-body.workshop-mode .btn-primary,
-body.workshop-mode .btn-secondary,
-body.workshop-mode footer,
-body.workshop-mode .vehicle-chip-info {
+body.workshop-mode .alert-banner {
     display: none !important;
 }
 
 body.workshop-mode .main-content {
     margin-left: 0 !important;
-    padding: var(--sp-xl);
+    padding: 16px !important;
+    background-color: #050a12 !important;
+    min-height: 100vh;
 }
 
-body.workshop-mode .page-header {
+.workshop-hud-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    font-family: var(--font-body);
+    color: #e2e8f0;
+}
+
+.workshop-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0d1526;
+    border: 1px solid #1e293b;
+    border-radius: var(--r-card);
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.workshop-vin-badge {
+    font-family: monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: #1e293b;
+    color: #00f0ff;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+.workshop-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .workshop-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.workshop-card {
+    background: #0b1322;
+    border: 1px solid #1e2d45;
+    border-radius: var(--r-card);
+    padding: 20px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+.workshop-card-title {
+    font-size: 1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #00f0ff;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #1e2d45;
+    padding-bottom: 10px;
+}
+
+.workshop-specs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.workshop-spec-item {
+    background: #060c18;
+    border: 1px solid #162338;
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+
+.workshop-spec-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.workshop-spec-val {
+    font-family: monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.workshop-quick-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.workshop-btn-giant {
+    min-height: 64px;
+    background: #111d33;
+    border: 1px solid #1e304f;
+    border-radius: 12px;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.15s var(--ease-out);
+    padding: 12px;
 }
 
-body.workshop-mode .vehicle-hero-right {
-    display: none;
+.workshop-btn-giant:hover {
+    background: #1a2b4a;
+    border-color: #00c2e0;
+    box-shadow: 0 0 16px rgba(0, 194, 224, 0.25);
+    transform: translateY(-2px);
 }
 
-body.workshop-mode .vehicle-hero {
-    background: var(--clr-surface-2);
-    border: 1px solid var(--clr-border);
+.workshop-btn-giant:active {
+    transform: translateY(0);
+}
+
+.workshop-inspection-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.workshop-check-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #060c18;
+    border: 1px solid #162338;
+    border-radius: 8px;
+    padding: 8px 14px;
+}
+
+.workshop-check-btns {
+    display: flex;
+    gap: 6px;
+}
+
+.workshop-check-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+    opacity: 0.4;
+}
+
+.workshop-check-btn.active {
+    opacity: 1;
+}
+
+.workshop-check-btn.ok.active {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border-color: #22c55e;
+}
+
+.workshop-check-btn.bad.active {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border-color: #ef4444;
 }
 
 /* ======================== PRINT MODE ======================== */
@@ -1511,3 +1667,178 @@ body.workshop-mode .vehicle-hero {
         gap: var(--sp-sm);
     }
 }
+
+/* ─── MANTENIMIENTO POR KM ───────────────────────────────── */
+.km-row {
+    display: grid;
+    grid-template-columns: 170px 1fr 140px;
+    gap: 10px;
+    align-items: center;
+    padding: 4px 0;
+}
+@media (max-width: 640px) {
+    .km-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+    .km-info { text-align: left !important; }
+}
+.km-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--clr-text-2);
+    white-space: nowrap;
+}
+.km-bar-wrap {
+    height: 7px;
+    background: var(--clr-surface-2);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.km-bar {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.5s var(--ease-out);
+}
+.km-info {
+    font-size: 0.72rem;
+    white-space: nowrap;
+    text-align: right;
+    font-weight: 600;
+}
+
+/* ─── PAGINACIÓN ─────────────────────────────────────────── */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 14px 0 6px;
+    flex-wrap: wrap;
+}
+.page-info {
+    font-size: 0.78rem;
+    color: var(--clr-text-muted);
+}
+
+/* ─── CABECERAS ORDENABLES ───────────────────────────────── */
+.data-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: color 0.15s;
+}
+.data-table th.sortable:hover {
+    color: var(--clr-accent);
+}
+
+/* ─── BUSCADOR SIDEBAR ───────────────────────────────────── */
+.sidebar-search-wrap {
+    position: relative;
+    padding: 0 var(--sp-lg) var(--sp-md);
+}
+.sidebar-search-wrap .search-icon {
+    position: absolute;
+    left: calc(var(--sp-lg) + 9px);
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    color: var(--clr-text-muted);
+    pointer-events: none;
+}
+.sidebar-search-input {
+    width: 100%;
+    padding: 7px 8px 7px 30px;
+    background: var(--clr-surface-2);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--r-sm);
+    font-size: 0.78rem;
+    color: var(--clr-text);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+    font-family: var(--font-body);
+}
+.sidebar-search-input:focus {
+    border-color: var(--clr-accent);
+}
+.sidebar-search-input::placeholder {
+    color: var(--clr-text-muted);
+}
+
+html.light-mode .sidebar-search-input {
+    background: var(--clr-surface);
+    color: var(--clr-text);
+}
+
+/* ─── GESTIÓN DE RECIBOS Y ADJUNTOS ─────────────────────── */
+.badge-doc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--r-full);
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: var(--clr-accent-dim);
+    color: var(--clr-accent);
+    border: 1px solid var(--clr-accent-glow);
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+.badge-doc-link:hover {
+    transform: translateY(-1px);
+}
+
+.recibos-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin-top: 10px;
+}
+.recibos-list-table th {
+    text-align: left;
+    padding: 8px;
+    background: var(--clr-surface-2);
+    color: var(--clr-text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--clr-border);
+}
+.recibos-list-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--clr-border);
+    vertical-align: middle;
+}
+
+.recibo-card-item {
+    background: var(--clr-surface-2);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--r-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-adjunto-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.73rem;
+    padding: 3px 8px;
+    border-radius: var(--r-xs);
+    background: var(--clr-surface-2);
+    border: 1px solid var(--clr-border);
+    color: var(--clr-text);
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+.btn-adjunto-pill:hover {
+    border-color: var(--clr-accent);
+    background: var(--clr-accent-dim);
+    color: var(--clr-accent);
+}
+

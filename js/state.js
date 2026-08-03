@@ -238,6 +238,51 @@ function addGasto(vehicleId, amount) {
   if (v && parseFloat(amount) > 0) { v.gastoTotal = (v.gastoTotal || 0) + parseFloat(amount); saveState(); }
 }
 
+/* ---- WORKSHOP SPECS & INSPECTIONS ---- */
+function getVehicleSpecs(vehicleId) {
+  const v = _state.vehicles.find(x => x.id === vehicleId);
+  if (!v) return null;
+  return v.specs || {
+    aceiteViscosidad: '5W-30',
+    aceiteCapacidad: '4.5 L',
+    presionDelantera: '2.3 bar',
+    presionTrasera: '2.1 bar',
+    parRuedas: '120 Nm',
+    liquidoFrenos: 'DOT 4',
+    refrigerante: 'G12 / G13'
+  };
+}
+
+function updateVehicleSpecs(vehicleId, specs) {
+  const v = _state.vehicles.find(x => x.id === vehicleId);
+  if (v) {
+    v.specs = { ...getVehicleSpecs(vehicleId), ...specs };
+    saveState();
+  }
+}
+
+function getWorkshopInspection(vehicleId) {
+  const v = _state.vehicles.find(x => x.id === vehicleId);
+  return v?.workshopChecks || {};
+}
+
+function updateWorkshopCheck(vehicleId, checkId, stateVal) {
+  const v = _state.vehicles.find(x => x.id === vehicleId);
+  if (v) {
+    if (!v.workshopChecks) v.workshopChecks = {};
+    v.workshopChecks[checkId] = stateVal;
+    saveState();
+  }
+}
+
+function resetWorkshopInspection(vehicleId) {
+  const v = _state.vehicles.find(x => x.id === vehicleId);
+  if (v) {
+    v.workshopChecks = {};
+    saveState();
+  }
+}
+
 /* ---- REVISIONES ---- */
 function addRevision(data) {
   const r = { ...data, id: generateId('REV'), vehicleId: _state.activeVehicleId };
@@ -333,6 +378,25 @@ function updateSeguro(id, data) {
   saveState();
 }
 function getSeguroByVehicle(vid) { return _state.seguro.filter(s => s.vehicleId === vid); }
+function addReciboSeguro(seguroId, reciboData) {
+  const s = _state.seguro.find(x => x.id === seguroId);
+  if (!s) return null;
+  if (!s.recibos) s.recibos = [];
+  const recibo = {
+    ...reciboData,
+    id: generateId('RCB'),
+    fechaRegistrado: new Date().toISOString()
+  };
+  s.recibos.push(recibo);
+  saveState();
+  return recibo;
+}
+function deleteReciboSeguro(seguroId, reciboId) {
+  const s = _state.seguro.find(x => x.id === seguroId);
+  if (!s || !s.recibos) return;
+  s.recibos = s.recibos.filter(r => r.id !== reciboId);
+  saveState();
+}
 
 /* ---- MULTAS ---- */
 function addMulta(data) {
@@ -419,6 +483,16 @@ function addTripChecklist(data) {
 function updateTripCheck(id, index, checked) {
   const t = _state.viajes.find(v => v.id === id);
   if (t) { t.checks[index] = checked; saveState(); }
+}
+
+/* ---- TRIP ITEMS (personalización de checklist de viaje) ---- */
+function setTripItems(vehicleId, items) {
+  if (!_state.kmIntervals[vehicleId]) _state.kmIntervals[vehicleId] = {};
+  _state.kmIntervals[vehicleId].tripItems = items;
+  saveState();
+}
+function getTripItems(vehicleId) {
+  return _state.kmIntervals[vehicleId]?.tripItems || null;
 }
 
 /* ---- DELETE ---- */

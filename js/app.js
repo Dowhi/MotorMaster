@@ -16,6 +16,55 @@ let filters = {
   recambios: { q: '', link: '', dateFrom: '', dateTo: '' }
 };
 
+/* ─── UTILS: escapeHtml, Sort, Paginación ────────────────────── */
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+let sortState = {
+  revisiones: { field: 'fecha', dir: -1 },
+  averias:    { field: 'fecha', dir: -1 },
+  recambios:  { field: 'fecha', dir: -1 }
+};
+let pageState = { revisiones: 1, averias: 1, recambios: 1 };
+const PAGE_SIZE = 25;
+const _RF = { revisiones: 'renderRevisiones', averias: 'renderAverias', recambios: 'renderRecambios' };
+function applySort(items, module) {
+  const { field, dir } = sortState[module] || { field: 'fecha', dir: -1 };
+  return [...items].sort((a, b) => {
+    const va = a[field] ?? '';
+    const vb = b[field] ?? '';
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return String(va).localeCompare(String(vb), 'es') * dir;
+  });
+}
+function applyPage(items, module) {
+  const page = pageState[module] || 1;
+  return items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+}
+function renderPagination(total, module) {
+  const page = pageState[module] || 1;
+  const pages = Math.ceil(total / PAGE_SIZE);
+  if (pages <= 1) return '';
+  const fn = _RF[module] || 'router';
+  return `<div class="pagination">
+    <button class="btn btn-ghost btn-sm" ${page === 1 ? 'disabled' : ''} onclick="pageState['${module}']=${page-1};${fn}()">‹ Anterior</button>
+    <span class="page-info">Pág. ${page}/${pages} &nbsp;·&nbsp; ${total} registros</span>
+    <button class="btn btn-ghost btn-sm" ${page === pages ? 'disabled' : ''} onclick="pageState['${module}']=${page+1};${fn}()">Siguiente ›</button>
+  </div>`;
+}
+function sortIcon(module, field) {
+  const s = sortState[module];
+  if (!s || s.field !== field) return '<span style="opacity:0.25;font-size:0.7em">↕</span>';
+  return s.dir === 1 ? '<span style="color:var(--clr-accent);font-size:0.75em">▲</span>' : '<span style="color:var(--clr-accent);font-size:0.75em">▼</span>';
+}
+function toggleSort(module, field, rerenderFn) {
+  const s = sortState[module];
+  if (s.field === field) { s.dir = -s.dir; } else { s.field = field; s.dir = -1; }
+  pageState[module] = 1;
+  rerenderFn();
+}
+
 function renderFilterBar(type) {
   const f = filters[type];
   const isRevisionOrAveria = type === 'revisiones' || type === 'averias';
@@ -347,23 +396,27 @@ function router() {
   window.scrollTo(0, 0);
 }
 
-/* User 6: TRIPS */
+/* User 6: TRIPS (checklist personalizable) */
 function renderTripChecklist() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('Trips'); return; }
   const trips = getState().viajes.filter(t => t.vehicleId === v.id);
-  const items = ['Presión neumáticos', 'Nivel aceite', 'Líquido limpiaparabrisas', 'Revisar juego luces', 'Botiquín / Triángulos', 'Estado de la rueda de repuesto', 'Documentación física', 'Nivel de refrigerante'];
+  const DEFAULT_TRIP_ITEMS = ['Presión neumáticos', 'Nivel aceite', 'Líquido limpiaparabrisas', 'Revisar juego luces', 'Botiquín / Triángulos', 'Estado de la rueda de repuesto', 'Documentación física', 'Nivel de refrigerante'];
+  const items = getState().kmIntervals[v.id]?.tripItems || DEFAULT_TRIP_ITEMS;
 
   c.innerHTML = `
     ${renderPageBack()}
-    <div class="page-header"><div><h1 class="page-title">Checklist de Viaje</h1><p class="page-sub">Preparación para trayectos largos</p></div>
-    <button class="btn btn-primary" id="btn-add-trip">+ Nuevo Viaje</button></div>
+    <div class="page-header"><div><h1 class="page-title">Checklist de Viaje</h1><p class="page-sub">Preparación para trayectos largos · ${items.length} ítems</p></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" id="btn-customize-trip">⚙️ Personalizar</button>
+      <button class="btn btn-primary" id="btn-add-trip">+ Nuevo Viaje</button>
+    </div></div>
     <div class="summary-grid">${trips.map(t => `<div class="card summary-card" style="flex-direction:column; align-items:flex-start;">
-      <h3>Viaje a ${t.destino} (${fmt.date(t.fecha)})</h3>
+      <h3>Viaje a ${escapeHtml(t.destino)} (${fmt.date(t.fecha)})</h3>
       <div style="margin-top:10px; width:100%; display: flex; flex-direction: column; gap: 4px;">
         ${items.map((it, i) => `<label class="check-item ${t.checks[i] ? 'done' : ''}" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 1px 0;">
           <input type="checkbox" ${t.checks[i] ? 'checked' : ''} data-tid="${t.id}" data-idx="${i}" style="width: 18px; height: 18px; accent-color: var(--clr-accent);"> 
-          <span style="${t.checks[i] ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${it}</span>
+          <span style="${t.checks[i] ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(it)}</span>
         </label>`).join('')}
       </div>
       <div style="margin-top:10px; width:100%; display: flex; gap: 8px;">
@@ -377,6 +430,23 @@ function renderTripChecklist() {
       if (dest) { addTripChecklist({ destino: dest, fecha: fmt.today() }); renderTripChecklist(); }
     });
   };
+
+  document.getElementById('btn-customize-trip').onclick = () => {
+    const currentItems = getState().kmIntervals[v.id]?.tripItems || DEFAULT_TRIP_ITEMS;
+    openModal('Personalizar Checklist de Viaje', `<div class="form">
+      <p style="font-size:0.82rem;color:var(--clr-text-muted);margin-bottom:12px">Un ítem por línea. Los cambios se guardan sólo para <strong>${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</strong>.</p>
+      <textarea id="trip-items-ta" class="form-input form-textarea" style="min-height:200px;font-family:monospace;font-size:0.82rem;line-height:1.6">${currentItems.map(escapeHtml).join('\n')}</textarea>
+      <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-trip-items">Guardar Lista</button></div>
+    </div>`);
+    document.getElementById('btn-save-trip-items').onclick = () => {
+      const raw = document.getElementById('trip-items-ta').value;
+      const newItems = raw.split('\n').map(s => s.trim()).filter(Boolean);
+      if (!newItems.length) { alert('Añade al menos un ítem'); return; }
+      setTripItems(v.id, newItems);
+      closeModal(); renderTripChecklist(); showToast('Lista personalizada guardada (✓ ' + newItems.length + ' ítems)');
+    };
+  };
+
   setupEditBtns(renderTripChecklist);
   document.querySelectorAll('.check-item input').forEach(inp => {
     inp.onchange = (e) => {
@@ -387,28 +457,67 @@ function renderTripChecklist() {
 }
 
 /* ======================== GUANTERA DIGITAL ======================== */
+/* ======================== GUANTERA DIGITAL ======================== */
+let guanteraFilter = 'all';
+
 function renderGuantera() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('Guantera Digital'); return; }
-  const docs = getDocsByVehicle(v.id);
+  let docs = getDocsByVehicle(v.id);
+
+  if (guanteraFilter !== 'all') {
+    if (guanteraFilter === 'linked') docs = docs.filter(d => d.linkedTo);
+    else docs = docs.filter(d => d.categoria === guanteraFilter);
+  }
+
+  const s = getState();
+  function linkBadge(d) {
+    if (!d.linkedTo) return '';
+    const { type, id } = d.linkedTo;
+    if (type === 'seguro') {
+      const seg = s.seguro.find(x => x.id === id);
+      return `<span class="badge-doc-link" title="Vinculado a Seguro">🛡️ ${escapeHtml(seg ? seg.compania : 'Seguro')}</span>`;
+    }
+    if (type === 'itv') {
+      const itv = s.itv.find(x => x.id === id);
+      return `<span class="badge-doc-link" title="Vinculado a ITV">🔍 ITV ${fmt.date(itv?.fechaInspeccion)}</span>`;
+    }
+    if (type === 'multa') {
+      const mul = s.multas.find(x => x.id === id);
+      return `<span class="badge-doc-link" title="Vinculado a Multa">📋 Multa ${escapeHtml(mul?.expediente||'')}</span>`;
+    }
+    if (type === 'revision') {
+      const rev = s.revisiones.find(x => x.id === id);
+      return `<span class="badge-doc-link" title="Vinculado a Revisión">🔩 Rev: ${escapeHtml(rev?.operacion||'')}</span>`;
+    }
+    return '';
+  }
+
+  const categories = ['all', 'Seguro / Póliza', 'Ficha Técnica / ITV', 'Propiedad / Compra', 'Impuesto Circulación', 'Otros', 'linked'];
+  const catLabels = { 'all': 'Todos', 'linked': '🔗 Vinculados' };
 
   c.innerHTML = `
     ${renderPageBack()}
     <div class="page-header">
-      <div><h1 class="page-title">Guantera Digital</h1><p class="page-sub">Documentación original de ${v.marca} ${v.modelo}</p></div>
+      <div><h1 class="page-title">Guantera Digital</h1><p class="page-sub">Documentación original y pólizas de ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</p></div>
       <button class="btn btn-primary" id="btn-add-doc">+ Añadir Documento</button>
     </div>
     
-    ${!docs.length ? emptySection('📁', 'No hay documentos guardados') : `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      ${categories.map(cat => `<button class="btn btn-xs ${guanteraFilter === cat ? 'btn-primary' : 'btn-ghost'}" onclick="guanteraFilter='${cat}';renderGuantera();" style="border:1px solid var(--clr-border)">${catLabels[cat] || cat}</button>`).join('')}
+    </div>
+
+    ${!docs.length ? emptySection('📁', 'No hay documentos en esta categoría') : `
     <div class="summary-grid">
       ${docs.map(d => `
       <div class="card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
-        <div style="height: 140px; background: var(--clr-surface-2); display: flex; align-items: center; justify-content: center; overflow: hidden;">
-          ${d.fileType?.startsWith('image') ? `<img src="${d.fileData}" style="width: 100%; height: 100%; object-fit: cover;">` : `<span style="font-size: 3rem;">📄</span>`}
+        <div style="height: 140px; background: var(--clr-surface-2); display: flex; align-items: center; justify-content: center; overflow: hidden; position:relative">
+          ${d.fileType?.startsWith('image') || d.fileData?.startsWith('data:image') ? `<img src="${d.fileData}" style="width: 100%; height: 100%; object-fit: cover;">` : `<span style="font-size: 3rem;">📄</span>`}
+          ${d.linkedTo ? `<div style="position:absolute;top:6px;left:6px">${linkBadge(d)}</div>` : ''}
         </div>
         <div style="padding: var(--sp-md); flex: 1;">
-          <h3 style="font-size: 0.95rem; margin-bottom: 4px;">${d.nombre}</h3>
-          <p style="font-size: 0.75rem; color: var(--clr-text-muted); margin-bottom: 12px;">${d.categoria} • ${fmt.date(d.fechaSubida)}</p>
+          <h3 style="font-size: 0.95rem; margin-bottom: 4px;">${escapeHtml(d.nombre)}</h3>
+          <p style="font-size: 0.75rem; color: var(--clr-text-muted); margin-bottom: 12px;">${escapeHtml(d.categoria)} • ${fmt.date(d.fechaSubida)}</p>
           <div style="display: flex; gap: 8px;">
             <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="viewDocument('${d.id}')">Ver</button>
             <button class="btn btn-secondary btn-sm" data-edit="documentos" data-id="${d.id}" title="Editar">✎</button>
@@ -423,31 +532,67 @@ function renderGuantera() {
   setupEditBtns(renderGuantera);
 }
 
-function openDocumentoModal(id = null, rerender) {
+function openDocumentoModal(id = null, rerender, defaultCat = null, defaultLink = null) {
   const isEdit = id !== null;
   const data = isEdit ? getState().documentos.find(d => d.id === id) : null;
+  const v = getActiveVehicle();
+  const s = getState();
+
+  let initialName = data ? data.nombre : '';
+  if (!initialName && defaultLink) {
+    if (defaultLink.type === 'seguro') {
+      const seg = s.seguro.find(x => x.id === defaultLink.id);
+      if (seg) initialName = `Póliza ${seg.compania}${seg.poliza ? ' (' + seg.poliza + ')' : ''}`;
+    } else if (defaultLink.type === 'itv') {
+      const itv = s.itv.find(x => x.id === defaultLink.id);
+      if (itv) initialName = `Informe ITV ${fmt.date(itv.fechaInspeccion)}`;
+    } else if (defaultLink.type === 'multa') {
+      const mul = s.multas.find(x => x.id === defaultLink.id);
+      if (mul) initialName = `Justificante Multa ${mul.expediente || ''}`;
+    }
+  }
+  if (!initialName && defaultCat === 'Seguro / Póliza') initialName = 'Póliza de Seguro';
+
+  const segOptions = s.seguro.filter(x => x.vehicleId === v?.id).map(x => `<option value="seguro|${x.id}" ${data?.linkedTo?.id === x.id || defaultLink?.id === x.id ? 'selected' : ''}>🛡️ Seguro: ${escapeHtml(x.compania)} (${escapeHtml(x.poliza||'S/N')})</option>`).join('');
+  const itvOptions = s.itv.filter(x => x.vehicleId === v?.id).map(x => `<option value="itv|${x.id}" ${data?.linkedTo?.id === x.id || defaultLink?.id === x.id ? 'selected' : ''}>🔍 ITV: ${fmt.date(x.fechaInspeccion)} (${escapeHtml(x.resultado)})</option>`).join('');
+  const mulOptions = s.multas.filter(x => x.vehicleId === v?.id).map(x => `<option value="multa|${x.id}" ${data?.linkedTo?.id === x.id || defaultLink?.id === x.id ? 'selected' : ''}>📋 Multa: ${escapeHtml(x.expediente||x.hecho||'')}</option>`).join('');
+  const revOptions = s.revisiones.filter(x => x.vehicleId === v?.id).map(x => `<option value="revision|${x.id}" ${data?.linkedTo?.id === x.id || defaultLink?.id === x.id ? 'selected' : ''}>🔩 Rev: ${escapeHtml(x.operacion)}</option>`).join('');
+
+  const catVal = defaultCat || data?.categoria || 'Propiedad / Compra';
 
   openModal(isEdit ? 'Editar Documento' : 'Registrar Documento', `
     <div class="form space-y-4">
       <div class="form-group">
         <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Nombre del Documento *</label>
-        <input id="doc-name" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none" placeholder="Ej: Permiso de Circulación" value="${data ? data.nombre : ''}">
+        <input id="doc-name" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none" placeholder="Ej: Póliza de Seguro 2026" value="${escapeHtml(initialName)}">
       </div>
-      <div class="form-group">
-        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Categoría</label>
-        <select id="doc-cat" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white appearance-none">
-          <option value="Propiedad / Compra" ${data?.categoria === 'Propiedad / Compra' ? 'selected' : ''}>Propiedad / Compra</option>
-          <option value="Seguro / Póliza" ${data?.categoria === 'Seguro / Póliza' ? 'selected' : ''}>Seguro / Póliza</option>
-          <option value="Ficha Técnica / ITV" ${data?.categoria === 'Ficha Técnica / ITV' ? 'selected' : ''}>Ficha Técnica / ITV</option>
-          <option value="Impuesto Circulación" ${data?.categoria === 'Impuesto Circulación' ? 'selected' : ''}>Impuesto Circulación</option>
-          <option value="Otros" ${data?.categoria === 'Otros' ? 'selected' : ''}>Otros</option>
-        </select>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Categoría</label>
+          <select id="doc-cat" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white appearance-none">
+            <option value="Propiedad / Compra" ${catVal === 'Propiedad / Compra' ? 'selected' : ''}>Propiedad / Compra</option>
+            <option value="Seguro / Póliza" ${catVal === 'Seguro / Póliza' ? 'selected' : ''}>Seguro / Póliza</option>
+            <option value="Ficha Técnica / ITV" ${catVal === 'Ficha Técnica / ITV' ? 'selected' : ''}>Ficha Técnica / ITV</option>
+            <option value="Impuesto Circulación" ${catVal === 'Impuesto Circulación' ? 'selected' : ''}>Impuesto Circulación</option>
+            <option value="Otros" ${catVal === 'Otros' ? 'selected' : ''}>Otros</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Vincular a Registro (Opcional)</label>
+          <select id="doc-link" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white appearance-none">
+            <option value="">— Ninguno (Documento independiente) —</option>
+            ${segOptions ? `<optgroup label="Seguros">${segOptions}</optgroup>` : ''}
+            ${itvOptions ? `<optgroup label="ITV">${itvOptions}</optgroup>` : ''}
+            ${mulOptions ? `<optgroup label="Multas">${mulOptions}</optgroup>` : ''}
+            ${revOptions ? `<optgroup label="Revisiones">${revOptions}</optgroup>` : ''}
+          </select>
+        </div>
       </div>
       ${!isEdit ? `
       <div class="form-group">
         <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Archivo (Imagen o PDF) *</label>
         <input type="file" id="doc-file" class="w-full bg-slate-800/50 border border-white/10 rounded-lg px-2 py-2 text-xs text-slate-300" accept="image/*,application/pdf" capture="environment">
-        <p class="text-[10px] text-slate-500 italic mt-1.5">Máximo 800KB recomendado para modo de respaldo.</p>
+        <p class="text-[10px] text-slate-500 italic mt-1.5">Máximo 800KB recomendado.</p>
       </div>` : ''}
       <div class="form-actions mt-6 flex gap-3">
         <button class="btn btn-ghost flex-1" onclick="closeModal()">Cancelar</button>
@@ -456,18 +601,37 @@ function openDocumentoModal(id = null, rerender) {
     </div>
   `);
 
+  const docFileInp = document.getElementById('doc-file');
+  const docNameInp = document.getElementById('doc-name');
+  if (docFileInp && docNameInp) {
+    docFileInp.onchange = () => {
+      if (!docNameInp.value.trim() && docFileInp.files[0]) {
+        const cleanName = docFileInp.files[0].name.replace(/\.[^/.]+$/, '');
+        docNameInp.value = cleanName;
+      }
+    };
+  }
+
   document.getElementById('btn-save-doc').onclick = async () => {
-    const name = document.getElementById('doc-name').value.trim();
+    let name = document.getElementById('doc-name').value.trim();
     const cat = document.getElementById('doc-cat').value;
+    const linkVal = document.getElementById('doc-link').value;
+    const linkedTo = linkVal ? { type: linkVal.split('|')[0], id: linkVal.split('|')[1] } : null;
     const btn = document.getElementById('btn-save-doc');
     const fileInput = document.getElementById('doc-file');
     const file = fileInput ? fileInput.files[0] : null;
     const user = firebase.auth().currentUser;
 
-    if (!name || (!isEdit && !file)) {
-      alert('Por favor, completa los campos obligatorios.');
+    if (!isEdit && !file) {
+      alert('Por favor, selecciona un archivo (Imagen o PDF).');
       return;
     }
+
+    if (!name && file) {
+      name = file.name.replace(/\.[^/.]+$/, '');
+      document.getElementById('doc-name').value = name;
+    }
+    if (!name) name = cat;
 
     const originalText = btn.textContent;
     btn.textContent = 'Procesando...';
@@ -478,7 +642,6 @@ function openDocumentoModal(id = null, rerender) {
       let uploadMethod = data ? (data.storageMode || 'base64') : 'storage';
 
       if (file) {
-        // Intento con Firebase Storage + Timeout
         try {
           const storagePromise = (async () => {
             const path = `users/${user?.uid || 'anonymous'}/docs/${Date.now()}_${file.name}`;
@@ -490,12 +653,8 @@ function openDocumentoModal(id = null, rerender) {
           const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000));
           fileDataUrl = await Promise.race([storagePromise, timeoutPromise]);
           uploadMethod = 'storage';
-          console.log('✅ Subido a Storage');
         } catch (e) {
-          console.warn('⚠️ Storage falló (CORS/Timeout). Usando fallback Base64...', e);
-          if (file.size > 900 * 1024) {
-             throw new Error('El archivo es muy grande (>900KB) para el modo de respaldo. Prueba con uno más pequeño.');
-          }
+          if (file.size > 900 * 1024) throw new Error('El archivo es muy grande (>900KB).');
           uploadMethod = 'base64';
           fileDataUrl = await new Promise((res, rej) => {
             const reader = new FileReader();
@@ -512,7 +671,8 @@ function openDocumentoModal(id = null, rerender) {
         fileData: fileDataUrl,
         fileType: file ? file.type : (data ? data.fileType : 'application/pdf'),
         fechaSubida: data ? data.fechaSubida : fmt.today(),
-        storageMode: uploadMethod
+        storageMode: uploadMethod,
+        linkedTo: linkedTo || (data ? data.linkedTo : null)
       };
 
       if (isEdit) {
@@ -520,11 +680,11 @@ function openDocumentoModal(id = null, rerender) {
         showToast('Documento actualizado');
       } else {
         addDocumento(docObj);
-        showToast(uploadMethod === 'base64' ? 'Guardado (Sincronización activada)' : 'Documento guardado');
+        showToast('Documento guardado en Guantera Digital');
       }
 
       closeModal();
-      rerender();
+      if (typeof rerender === 'function') rerender();
     } catch (err) {
       console.error('Error al guardar documento:', err);
       alert('Error: ' + err.message);
@@ -575,6 +735,46 @@ function viewDocument(id) {
   `;
 
   openModal(d.nombre, `<div class="doc-viewer-container">${content}${footer}</div>`);
+}
+
+/* Visor universal de adjuntos (imágenes o PDF) */
+function viewAdjuntoModal(title, fileData, fileType = '') {
+  if (!fileData) return;
+  const isImage = fileType.startsWith('image') || fileData.startsWith('data:image');
+  let content = '';
+  if (isImage) {
+    content = `<div style="text-align:center;overflow:auto;max-height:70vh">
+      <img src="${fileData}" style="max-width:100%;height:auto;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.4)">
+    </div>`;
+  } else {
+    content = `<div style="padding:25px;text-align:center;background:var(--clr-surface-2);border-radius:12px;border:1px dashed var(--clr-border)">
+      <div style="font-size:3rem;margin-bottom:12px">📄</div>
+      <p style="margin-bottom:18px;font-size:0.9rem">El adjunto está listo para ser visualizado.</p>
+      <a href="${fileData}" target="_blank" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none">
+        <span>👁️</span> Abrir Documento Completo
+      </a>
+    </div>`;
+  }
+  const footer = `<div style="margin-top:15px;display:flex;gap:10px;justify-content:center;border-top:1px solid var(--clr-border);padding-top:15px">
+    <a href="${fileData}" download="${title.replace(/[^a-z0-9]/gi, '_')}${isImage ? '.jpg' : '.pdf'}" class="btn btn-secondary btn-sm" style="text-decoration:none">📥 Descargar</a>
+    <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cerrar</button>
+  </div>`;
+  openModal(`📄 ${escapeHtml(title)}`, `<div>${content}${footer}</div>`);
+}
+
+/* Visor de foto de avería */
+function viewAveriaFoto(id) {
+  const a = getState().averias.find(x => x.id === id);
+  if (!a?.foto) return;
+  openModal(`📷 ${escapeHtml(a.sintomas || 'Avería')}`, `
+    <div style="text-align:center;overflow:auto;max-height:70vh">
+      <img src="${a.foto}" style="max-width:100%;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.4)">
+    </div>
+    <div style="margin-top:15px;display:flex;gap:10px;justify-content:center;border-top:1px solid var(--clr-border);padding-top:15px">
+      <a href="${a.foto}" download="averia_foto.jpg" class="btn btn-secondary btn-sm" style="text-decoration:none">📥 Guardar</a>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cerrar</button>
+    </div>
+  `);
 }
 
 /* User 5: Sale Report View */
@@ -804,6 +1004,39 @@ function renderDashboard() {
       </div>
     </div>
 
+    ${(() => {
+      const KM_MAINT = [
+        { id: 'aceite',       label: 'Aceite / Lubricante',   icon: '🛢️', keywords: ['aceite','oil','lubric'],              defaultInterval: 15000 },
+        { id: 'filtros',      label: 'Filtros',               icon: '🔧', keywords: ['filtro','filter','aire','habitaculo'],  defaultInterval: 30000 },
+        { id: 'frenos',       label: 'Frenos / Pastillas',    icon: '🛑', keywords: ['fren','pastilla','brake','disco'],       defaultInterval: 60000 },
+        { id: 'distribucion', label: 'Distribución / Correa', icon: '⚙️', keywords: ['distribuc','correa','timing','cadena'],  defaultInterval: 120000 },
+      ];
+      const kmInterv = state.kmIntervals?.[vid] || {};
+      const curKm = parseFloat(vehicle.km) || 0;
+      const rows = KM_MAINT.map(type => {
+        const interval = parseFloat(kmInterv[type.id]) || type.defaultInterval;
+        const matching = revs.filter(r => type.keywords.some(kw => (r.operacion||'').toLowerCase().includes(kw)));
+        if (!matching.length) return `<div class="km-row"><div class="km-label">${type.icon} ${type.label}</div><div class="km-bar-wrap"><div class="km-bar" style="width:0%;background:var(--clr-border)"></div></div><div class="km-info" style="color:var(--clr-text-muted)">Sin registros</div></div>`;
+        const lastKm = Math.max(...matching.map(r => parseFloat(r.km)||0));
+        const nextKm = lastKm + interval;
+        const pct = Math.min(Math.round(((curKm - lastKm) / interval) * 100), 110);
+        const kmLeft = Math.round(nextKm - curKm);
+        const barColor = pct >= 100 ? 'var(--clr-danger)' : pct >= 80 ? 'var(--clr-warning)' : 'var(--clr-success)';
+        const statusTxt = pct >= 100
+          ? `¡Pasado ${Math.abs(kmLeft).toLocaleString('es-ES')} km!`
+          : `${kmLeft.toLocaleString('es-ES')} km restantes`;
+        return `<div class="km-row">
+          <div class="km-label">${type.icon} ${type.label}</div>
+          <div class="km-bar-wrap"><div class="km-bar" style="width:${Math.min(pct,100)}%;background:${barColor}"></div></div>
+          <div class="km-info" style="color:${barColor}">${statusTxt} <span style="color:var(--clr-text-muted)">(${pct>100?100:pct}%)</span></div>
+        </div>`;
+      }).join('');
+      return `<div class="card" style="margin-top:20px;">
+        <div class="card-header"><span>🔧 Mantenimiento por Km</span><a href="#/settings" style="font-size:0.7rem;color:var(--clr-accent)">⚙️ Configurar intervalos</a></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">${rows}</div>
+      </div>`;
+    })()}
+
     <div class="card card-body" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
        <span>¿Compartir estado por WhatsApp?</span>
        <button class="btn btn-whatsapp btn-sm" onclick="whatsappShare('MotorMaster: Resumen de ${vehicle.marca} ${vehicle.modelo}. Gasto anual: ${fmt.currency(totalGastoYear)}.')">Compartir</button>
@@ -1013,16 +1246,40 @@ function renderSettings() {
 
 function exportToCSV() {
   const s = getState();
-  let csv = 'ID;Fecha;Vehiculo;Modulo;Concepto;Importe;Referencia\n';
-  s.revisiones.forEach(r => { const v = s.vehicles.find(x => x.id === r.vehicleId); csv += `${r.id};${r.fecha};${v?.marca} ${v?.modelo};Revisiones;${r.operacion.replace(/;/g, ',')};${r.coste};—\n`; });
-  s.averias.forEach(a => { const v = s.vehicles.find(x => x.id === a.vehicleId); csv += `${a.id};${a.fecha};${v?.marca} ${v?.modelo};Averias;${a.sintomas.replace(/;/g, ',')};${a.coste};—\n`; });
+  const sep = ';';
+  const vName = id => { const v = s.vehicles.find(x => x.id === id); return v ? `${v.marca} ${v.modelo}` : '?'; };
+  const esc = v => String(v ?? '—').replace(/;/g, ',').replace(/\n/g, ' ');
+  // BOM para que Excel abra correctamente UTF-8
+  let csv = '\uFEFF';
+  csv += `ID${sep}Fecha${sep}Vehículo${sep}Módulo${sep}Concepto${sep}Importe€${sep}Referencia\n`;
+  s.revisiones.forEach(r => {
+    csv += `${r.id}${sep}${r.fecha||''}${sep}${vName(r.vehicleId)}${sep}Revisiones${sep}${esc(r.operacion)}${sep}${r.coste||0}${sep}${esc(r.taller)}\n`;
+  });
+  s.averias.forEach(a => {
+    csv += `${a.id}${sep}${a.fecha||''}${sep}${vName(a.vehicleId)}${sep}Averías${sep}${esc(a.sintomas)}${sep}${a.coste||0}${sep}${esc(a.taller)}\n`;
+  });
+  s.recambios.forEach(r => {
+    csv += `${r.id}${sep}${r.fecha||''}${sep}${vName(r.vehicleId)}${sep}Recambios${sep}${esc(r.nombre)}${sep}${r.precio||0}${sep}${esc(r.tienda)}\n`;
+  });
+  s.itv.forEach(i => {
+    csv += `${i.id}${sep}${i.fechaInspeccion||''}${sep}${vName(i.vehicleId)}${sep}ITV${sep}${esc(i.resultado)}${sep}${i.coste||0}${sep}${esc(i.estacion)}\n`;
+  });
+  s.seguro.forEach(sg => {
+    csv += `${sg.id}${sep}${sg.fechaVencimiento||''}${sep}${vName(sg.vehicleId)}${sep}Seguro${sep}${esc(sg.compania)} - ${esc(sg.tipoSG)}${sep}${sg.precio||0}${sep}${esc(sg.poliza)}\n`;
+  });
+  s.multas.forEach(m => {
+    csv += `${m.id}${sep}${m.fechaDenuncia||''}${sep}${vName(m.vehicleId)}${sep}Multas${sep}${esc(m.hecho||m.motivo)}${sep}${m.importePagado||m.importe||0}${sep}${esc(m.expediente)}\n`;
+  });
+  s.otros.forEach(o => {
+    csv += `${o.id}${sep}${o.fechaVencimiento||''}${sep}${vName(o.vehicleId)}${sep}Otros${sep}${esc(o.descripcion)}${sep}${o.importe||0}${sep}—\n`;
+  });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `motormaster_export.csv`;
+  a.href = url; a.download = `motormaster_export_completo_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000); // Liberar memoria
-  showToast('Archivo CSV generado');
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('CSV completo generado — 7 módulos exportados');
 }
 
 /**
@@ -1367,31 +1624,39 @@ function renderRevisiones() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('Revisiones'); return; }
 
-  // Apply filters
   const f = filters.revisiones;
   let items = getRevisionesByVehicle(v.id);
   if (f.q) {
     const q = f.q.toLowerCase();
-    items = items.filter(r => r.operacion.toLowerCase().includes(q) || (r.notas && r.notas.toLowerCase().includes(q)) || r.id.toLowerCase().includes(q));
+    items = items.filter(r => (r.operacion||'').toLowerCase().includes(q) || (r.notas||'').toLowerCase().includes(q) || (r.taller||'').toLowerCase().includes(q) || r.id.toLowerCase().includes(q));
   }
   if (f.priority) items = items.filter(r => r.prioridad === f.priority);
   if (f.dateFrom) items = items.filter(r => r.fecha >= f.dateFrom);
   if (f.dateTo) items = items.filter(r => r.fecha <= f.dateTo);
 
+  items = applySort(items, 'revisiones');
+  const totalFiltered = items.length;
   const total = items.reduce((s, r) => s + parseFloat(r.coste || 0), 0);
+  const pageItems = applyPage(items, 'revisiones');
+
   c.innerHTML = `
     ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Revisiones</h1><p class="page-sub">Mantenimiento Preventivo</p></div>
       <button class="btn btn-primary" id="btn-add-rev">+ Añadir Revisión</button></div>
-    
     ${renderFilterBar('revisiones')}
-
-    ${!items.length ? emptySection('🔩', 'Sin revisiones registradas o que coincidan con los filtros') : `
+    ${!totalFiltered ? emptySection('🔩', 'Sin revisiones registradas o que coincidan con los filtros') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>Fecha</th><th>Operación</th><th>Km</th><th>Coste</th><th>Próxima</th><th></th></tr></thead>
-      <tbody>${items.map(r => `<tr>
+      <thead><tr>
+        <th class="sortable" onclick="toggleSort('revisiones','fecha',renderRevisiones)">${sortIcon('revisiones','fecha')} Fecha</th>
+        <th>Operación</th>
+        <th class="sortable" onclick="toggleSort('revisiones','km',renderRevisiones)">${sortIcon('revisiones','km')} Km</th>
+        <th class="sortable" onclick="toggleSort('revisiones','coste',renderRevisiones)">${sortIcon('revisiones','coste')} Coste</th>
+        <th class="sortable" onclick="toggleSort('revisiones','proximaFecha',renderRevisiones)">${sortIcon('revisiones','proximaFecha')} Próxima</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${pageItems.map(r => `<tr>
         <td data-label="Fecha">${fmt.date(r.fecha)}</td>
-        <td data-label="Operación"><strong>${r.operacion}</strong><br><small class="text-muted">${r.taller || ''} ${r.factura ? `| Fact: ${r.factura}` : ''}</small>${r.notas ? `<br><small class="text-muted">${r.notas}</small>` : ''}</td>
+        <td data-label="Operación"><strong>${escapeHtml(r.operacion)}</strong><br><small class="text-muted">${escapeHtml(r.taller||'')} ${r.factura ? `| Fact: ${escapeHtml(r.factura)}` : ''}</small>${r.notas ? `<br><small class="text-muted">${escapeHtml(r.notas)}</small>` : ''}</td>
         <td data-label="Km">${fmt.km(r.km)}</td>
         <td data-label="Coste" class="gasto">${fmt.currency(r.coste)}</td>
         <td data-label="Próxima">${fmt.date(r.proximaFecha)}</td>
@@ -1403,7 +1668,8 @@ function renderRevisiones() {
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="totals-bar"><span>Total en Revisiones  </span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+    <div class="totals-bar"><span>Total en Revisiones  </span><span class="gasto">${fmt.currency(total)}</span></div>
+    ${renderPagination(totalFiltered, 'revisiones')}`}`;
 
   setupFilterListeners('revisiones', renderRevisiones);
   document.getElementById('btn-add-rev').onclick = () => openRevisionModal(null, renderRevisiones);
@@ -1504,31 +1770,41 @@ function renderAverias() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('Averías'); return; }
 
-  // Apply filters
   const f = filters.averias;
   let items = getAveriasByVehicle(v.id);
   if (f.q) {
     const q = f.q.toLowerCase();
-    items = items.filter(a => a.sintomas.toLowerCase().includes(q) || (a.diagnostico && a.diagnostico.toLowerCase().includes(q)) || (a.solucion && a.solucion.toLowerCase().includes(q)) || a.id.toLowerCase().includes(q));
+    items = items.filter(a => (a.sintomas||'').toLowerCase().includes(q) || (a.diagnostico||'').toLowerCase().includes(q) || (a.solucion||'').toLowerCase().includes(q) || (a.taller||'').toLowerCase().includes(q) || a.id.toLowerCase().includes(q));
   }
   if (f.priority) items = items.filter(a => a.prioridad === f.priority);
   if (f.dateFrom) items = items.filter(a => a.fecha >= f.dateFrom);
   if (f.dateTo) items = items.filter(a => a.fecha <= f.dateTo);
 
+  items = applySort(items, 'averias');
+  const totalFiltered = items.length;
   const total = items.reduce((s, a) => s + parseFloat(a.coste || 0), 0);
+  const pageItems = applyPage(items, 'averias');
+
   c.innerHTML = `
     ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Averías</h1><p class="page-sub">Mantenimiento Correctivo</p></div>
       <button class="btn btn-primary" id="btn-add-ave">+ Nueva Avería</button></div>
-    
     ${renderFilterBar('averias')}
-
-    ${!items.length ? emptySection('⚠️', 'Sin averías registradas o que coincidan con los filtros') : `
+    ${!totalFiltered ? emptySection('⚠️', 'Sin averías registradas o que coincidan con los filtros') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>Fecha</th><th>Síntomas</th><th>Diagnóstico</th><th>Solución</th><th>Coste</th><th></th></tr></thead>
-      <tbody>${items.map(a => `<tr>
+      <thead><tr>
+        <th class="sortable" onclick="toggleSort('averias','fecha',renderAverias)">${sortIcon('averias','fecha')} Fecha</th>
+        <th>Síntomas</th>
+        <th>Diagnóstico</th>
+        <th>Solución</th>
+        <th class="sortable" onclick="toggleSort('averias','coste',renderAverias)">${sortIcon('averias','coste')} Coste</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${pageItems.map(a => `<tr>
         <td data-label="Fecha">${fmt.date(a.fecha)}</td>
-        <td data-label="Síntomas"><strong>${a.sintomas}</strong><br><small class="text-muted">${a.taller || ''} ${a.factura ? `| Fact: ${a.factura}` : ''}</small></td><td data-label="Diagnóstico">${a.diagnostico || '—'}</td><td data-label="Solución">${a.solucion || '—'}</td>
+        <td data-label="Síntomas"><strong>${escapeHtml(a.sintomas)}</strong><br><small class="text-muted">${escapeHtml(a.taller||'')} ${a.factura ? `| Fact: ${escapeHtml(a.factura)}` : ''}</small>${a.foto ? `<br><img src="${a.foto}" style="max-width:72px;max-height:52px;object-fit:cover;border-radius:4px;margin-top:4px;cursor:pointer" onclick="viewAveriaFoto('${a.id}')" title="Ver foto">` : ''}</td>
+        <td data-label="Diagnóstico">${escapeHtml(a.diagnostico||'—')}</td>
+        <td data-label="Solución">${escapeHtml(a.solucion||'—')}</td>
         <td data-label="Coste" class="gasto">${fmt.currency(a.coste)}</td>
         <td class="text-right" style="white-space:nowrap">
           <div class="flex gap-2 justify-end">
@@ -1538,7 +1814,8 @@ function renderAverias() {
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="totals-bar"><span>Total en Averías  </span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+    <div class="totals-bar"><span>Total en Averías  </span><span class="gasto">${fmt.currency(total)}</span></div>
+    ${renderPagination(totalFiltered, 'averias')}`}`;
 
   setupFilterListeners('averias', renderAverias);
   document.getElementById('btn-add-ave').onclick = () => openAveriaModal(null, renderAverias);
@@ -1564,6 +1841,7 @@ function openAveriaModal(id = null, rerender) {
         <option ${data && data.prioridad === 'Alta' ? 'selected' : ''}>Alta</option>
       </select></div>
       <div class="form-group"><label>KM actuales del vehículo *</label><input id="af-km" type="number" class="form-input" value="${data ? (data.km || 0) : v.km}"></div>
+      <div class="form-group"><label>Coste Final (€)</label><input id="af-coste" type="number" class="form-input" value="${data ? data.coste : ''}" readonly></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Taller / Comercio</label><input id="af-taller" class="form-input" placeholder="Nombre del taller" value="${data ? (data.taller || '') : ''}"></div>
@@ -1603,16 +1881,28 @@ function openAveriaModal(id = null, rerender) {
       <div class="form-group"><label>Diagnóstico</label><input id="af-diag" class="form-input" placeholder="Causa del problema" value="${data ? (data.diagnostico || '') : ''}"></div>
       <div class="form-group"><label>Solución / Reparación</label><input id="af-sol" class="form-input" placeholder="Qué se ha reparado" value="${data ? (data.solucion || '') : ''}"></div>
     </div>
+    <div class="form-group">
+      <label>📷 Foto del daño (Opcional)</label>
+      <input type="file" id="af-foto" class="form-input" accept="image/*" capture="environment">
+      ${data && data.foto ? `<div style="margin-top:8px"><img src="${data.foto}" style="max-width:100%;max-height:110px;border-radius:6px;object-fit:cover;border:1px solid var(--clr-border)"></div>` : ''}
+      <p style="font-size:0.72rem;color:var(--clr-text-muted);margin-top:4px;font-style:italic">Máximo 600 KB. La foto se adjunta al registro de avería.</p>
+    </div>
     <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-ave">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
   </div>`);
 
   setupInvoiceLogic(data ? data.conceptos : null);
 
-  document.getElementById('btn-save-ave').onclick = () => {
+  document.getElementById('btn-save-ave').onclick = async () => {
+    const fotoFile = document.getElementById('af-foto')?.files[0];
+    let fotoData = data?.foto || '';
+    if (fotoFile) {
+      if (fotoFile.size > 600 * 1024) { alert('La imagen es muy grande. Máximo 600 KB.'); return; }
+      fotoData = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(fotoFile); });
+    }
     const fields = {
       sintomas: document.getElementById('af-sint').value.trim(),
       fecha: document.getElementById('af-fecha').value,
-      coste: parseFloat(document.getElementById('af-coste').value),
+      coste: parseFloat(document.getElementById('af-coste')?.value) || 0,
       km: parseFloat(document.getElementById('af-km').value),
       diagnostico: document.getElementById('af-diag').value.trim(),
       solucion: document.getElementById('af-sol').value.trim(),
@@ -1621,7 +1911,8 @@ function openAveriaModal(id = null, rerender) {
       factura: document.getElementById('af-fact').value.trim(),
       formaPago: document.getElementById('af-pago').value,
       ivaIncluido: document.getElementById('inv-iva-inc').checked,
-      conceptos: getInvoiceItems()
+      conceptos: getInvoiceItems(),
+      foto: fotoData
     };
     if (!fields.fecha || !fields.sintomas || isNaN(fields.coste)) { alert('Completa los campos obligatorios (*)'); return; }
 
@@ -1639,12 +1930,11 @@ function renderRecambios() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('Recambios'); return; }
 
-  // Apply filters
   const f = filters.recambios;
   let items = getRecambiosByVehicle(v.id);
   if (f.q) {
     const q = f.q.toLowerCase();
-    items = items.filter(r => r.nombre.toLowerCase().includes(q) || (r.referencia && r.referencia.toLowerCase().includes(q)) || (r.tienda && r.tienda.toLowerCase().includes(q)) || r.id.toLowerCase().includes(q));
+    items = items.filter(r => (r.nombre||'').toLowerCase().includes(q) || (r.referencia||'').toLowerCase().includes(q) || (r.tienda||'').toLowerCase().includes(q) || r.id.toLowerCase().includes(q));
   }
   if (f.link) {
     if (f.link === 'none') items = items.filter(r => !r.linkedTo);
@@ -1652,7 +1942,7 @@ function renderRecambios() {
   }
   if (f.dateFrom || f.dateTo) {
     items = items.filter(r => {
-      const date = r.id.split('-')[1] ? new Date(parseInt(r.id.split('-')[1], 36)).toISOString().split('T')[0] : null;
+      const date = r.fecha || (r.id.split('-')[1] ? new Date(parseInt(r.id.split('-')[1], 36)).toISOString().split('T')[0] : null);
       if (!date) return true;
       if (f.dateFrom && date < f.dateFrom) return false;
       if (f.dateTo && date > f.dateTo) return false;
@@ -1660,29 +1950,41 @@ function renderRecambios() {
     });
   }
 
+  items = applySort(items, 'recambios');
+  const totalFiltered = items.length;
   const total = items.reduce((s, r) => s + parseFloat(r.precio || 0), 0);
+  const pageItems = applyPage(items, 'recambios');
+
   const revOpts = getRevisionesByVehicle(v.id);
   const aveOpts = getAveriasByVehicle(v.id);
   function linkedLabel(r) {
     if (!r.linkedTo) return '—';
-    if (r.linkedTo.type === 'revision') { const rv = revOpts.find(x => x.id === r.linkedTo.id); return rv ? `<span class="badge badge-info">Rev: ${rv.operacion}</span>` : 'Rev: Desconocida'; }
+    if (r.linkedTo.type === 'revision') { const rv = revOpts.find(x => x.id === r.linkedTo.id); return rv ? `<span class="badge badge-info">Rev: ${escapeHtml(rv.operacion)}</span>` : 'Rev: Desconocida'; }
     if (r.linkedTo.type === 'averia') { const av = aveOpts.find(x => x.id === r.linkedTo.id); return av ? `<span class="badge badge-warning">Ave: ${fmt.date(av.fecha)}</span>` : 'Ave: Desconocida'; }
     return '—';
   }
+
   c.innerHTML = `
     ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">Recambios</h1><p class="page-sub">Inventario de Piezas</p></div>
       <button class="btn btn-primary" id="btn-add-rec">+ Añadir Recambio</button></div>
-    
     ${renderFilterBar('recambios')}
-
-    ${!items.length ? emptySection('📦', 'Sin recambios registrados o que coincidan con los filtros') : `
+    ${!totalFiltered ? emptySection('📦', 'Sin recambios registrados o que coincidan con los filtros') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>Pieza</th><th>Marca / Ref.</th><th>Tienda</th><th>Precio</th><th>Vinculado a</th><th></th></tr></thead>
-      <tbody>${items.map(r => `<tr>
-        <td data-label="Pieza"><strong>${r.nombre}</strong></td>
-        <td data-label="Marca / Ref.">${r.marca || '—'}<br><small class="text-muted">${r.referencia || ''}</small></td>
-        <td data-label="Tienda">${r.tienda || '—'}<br><small class="text-muted">${r.factura ? `Fact: ${r.factura}` : ''}</small></td>
+      <thead><tr>
+        <th class="sortable" onclick="toggleSort('recambios','fecha',renderRecambios)">${sortIcon('recambios','fecha')} Fecha</th>
+        <th class="sortable" onclick="toggleSort('recambios','nombre',renderRecambios)">${sortIcon('recambios','nombre')} Pieza</th>
+        <th>Marca / Ref.</th>
+        <th>Tienda</th>
+        <th class="sortable" onclick="toggleSort('recambios','precio',renderRecambios)">${sortIcon('recambios','precio')} Precio</th>
+        <th>Vinculado a</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${pageItems.map(r => `<tr>
+        <td data-label="Fecha">${fmt.date(r.fecha||'')}</td>
+        <td data-label="Pieza"><strong>${escapeHtml(r.nombre)}</strong></td>
+        <td data-label="Marca / Ref.">${escapeHtml(r.marca||'—')}<br><small class="text-muted">${escapeHtml(r.referencia||'')}</small></td>
+        <td data-label="Tienda">${escapeHtml(r.tienda||'—')}<br><small class="text-muted">${r.factura ? `Fact: ${escapeHtml(r.factura)}` : ''}</small></td>
         <td data-label="Precio" class="gasto">${fmt.currency(r.precio)}</td>
         <td data-label="Vinculado">${linkedLabel(r)}</td>
         <td class="text-right" style="white-space:nowrap">
@@ -1693,7 +1995,8 @@ function renderRecambios() {
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="totals-bar"><span>Total en Recambios </span><span class="gasto">${fmt.currency(total)}</span></div>`}`;
+    <div class="totals-bar"><span>Total en Recambios </span><span class="gasto">${fmt.currency(total)}</span></div>
+    ${renderPagination(totalFiltered, 'recambios')}`}`;
 
   setupFilterListeners('recambios', renderRecambios);
   document.getElementById('btn-add-rec').onclick = () => openRecambioModal(null, renderRecambios);
@@ -1797,20 +2100,33 @@ function renderITV() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('ITV'); return; }
   const items = getITVByVehicle(v.id).sort((a, b) => b.fechaInspeccion > a.fechaInspeccion ? 1 : -1);
+  const docs = getDocsByVehicle(v.id);
+
   c.innerHTML = `
     ${renderPageBack()}
     <div class="page-header"><div><h1 class="page-title">ITV</h1><p class="page-sub">Inspección Técnica de Vehículos</p></div>
       <button class="btn btn-primary" id="btn-add-itv">+ Registrar ITV</button></div>
     ${!items.length ? emptySection('🔍', 'Sin registros de ITV') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>Fecha Insp.</th><th>Estación</th><th>Resultado</th><th>Factura / Importe</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
-      <tbody>${items.map(i => `<tr>
+      <thead><tr><th>Fecha Insp.</th><th>Estación</th><th>Resultado</th><th>Importe</th><th>Informe / Recibo</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
+      <tbody>${items.map(i => {
+        const linkedDoc = docs.find(d => (d.linkedTo?.type === 'itv' && d.linkedTo?.id === i.id) || (d.categoria === 'ITV' && d.nombre.includes(fmt.date(i.fechaInspeccion))));
+        const numRecibo = i.factura ? escapeHtml(i.factura) : null;
+
+        return `<tr>
         <td data-label="Fecha Insp."><strong>${fmt.date(i.fechaInspeccion)}</strong></td>
-        <td data-label="Estación">${i.estacion || '—'}</td>
-        <td data-label="Resultado">${stateBadge(i.resultado)}${i.causa ? `<br><small class="text-danger italic">${i.causa}</small>` : ''}</td>
+        <td data-label="Estación">${escapeHtml(i.estacion || '—')}</td>
+        <td data-label="Resultado">${stateBadge(i.resultado)}${i.causa ? `<br><small class="text-danger italic">${escapeHtml(i.causa)}</small>` : ''}</td>
         <td data-label="Importe">
-          ${i.factura ? `<small class="text-muted">Fact: ${i.factura}</small><br>` : ''}
           <span class="gasto">${fmt.currency(i.coste || 0)}</span>
+        </td>
+        <td data-label="Informe / Recibo">
+          ${numRecibo ? `<div style="font-weight:700;font-size:0.85rem;color:var(--clr-text-main)">🧾 ${numRecibo}</div>` : ''}
+          ${i.adjunto
+            ? `<button class="btn btn-xs btn-adjunto-pill" style="margin-top:4px" onclick="viewAdjuntoModal('Informe ITV ${fmt.date(i.fechaInspeccion)}', '${i.adjunto.fileData}', '${i.adjunto.fileType}')">📄 Ver Informe</button>`
+            : linkedDoc
+              ? `<button class="btn btn-xs btn-adjunto-pill" style="margin-top:4px" onclick="viewDocument('${linkedDoc.id}')">📄 Ver Guantera</button>`
+              : !numRecibo ? '<span class="text-muted">—</span>' : ''}
         </td>
         <td data-label="Vencimiento">${fmt.date(i.fechaVencimiento)}</td>
         <td class="text-right" style="white-space:nowrap">
@@ -1819,7 +2135,8 @@ function renderITV() {
             <button class="btn btn-danger btn-xs" data-delete="itv" data-id="${i.id}">✕</button>
           </div>
         </td>
-      </tr>`).join('')}</tbody>
+      </tr>`;
+      }).join('')}</tbody>
     </table></div>`}`;
 
   document.getElementById('btn-add-itv').onclick = () => openITVModal();
@@ -1832,29 +2149,104 @@ function openITVModal(id = null) {
   const isEdit = id !== null;
   const data = isEdit ? getState().itv.find(i => i.id === id) : null;
 
+  // Buscar última ITV registrada antes de esta para calcular la fecha de vencimiento previa
+  const existingItvs = getITVByVehicle(v.id)
+    .filter(i => !isEdit || i.id !== id)
+    .sort((a, b) => b.fechaInspeccion > a.fechaInspeccion ? 1 : -1);
+  const prevItv = existingItvs.length ? existingItvs[0] : null;
+  const prevVenc = prevItv?.fechaVencimiento || null;
+
   openModal(isEdit ? 'Editar ITV' : 'Registrar ITV', `<div class="form">
     <div class="form-row">
       <div class="form-group"><label>Fecha de inspección *</label><input id="itv-fecha" type="date" class="form-input" value="${data ? data.fechaInspeccion : fmt.today()}"></div>
+      <div class="form-group"><label>Periodo de validez *</label><select id="itv-periodo" class="form-input">
+        <option value="6">Cada 6 Meses (Comerciales / > 10 años)</option>
+        <option value="12" selected>Cada 1 Año / 12 Meses (Turismos 4-10 años)</option>
+        <option value="24">Cada 2 Años / 24 Meses (Turismos 0-4 años)</option>
+      </select></div>
+    </div>
+
+    <div class="form-row">
       <div class="form-group"><label>Resultado *</label><select id="itv-res" class="form-input">
         <option ${data && data.resultado === 'Apto' ? 'selected' : ''}>Apto</option>
         <option ${data && data.resultado === 'Apto con Defectos' ? 'selected' : ''}>Apto con Defectos</option>
         <option ${data && data.resultado === 'No Apto' ? 'selected' : ''}>No Apto</option>
       </select></div>
-    </div>
-    <div class="form-row">
       <div class="form-group"><label>Estación ITV</label><input id="itv-est" class="form-input" placeholder="Nombre centro ITV" value="${data ? (data.estacion || '') : ''}"></div>
-      <div class="form-group"><label>Importe (€)</label><input id="itv-coste" type="number" class="form-input" placeholder="0,00" step="0.01" value="${data ? data.coste : ''}"></div>
     </div>
+
     <div class="form-row">
-      <div class="form-group"><label>Nº Factura</label><input id="itv-fact" class="form-input" placeholder="Nº Factura..." value="${data ? (data.factura || '') : ''}"></div>
-      <div class="form-group"><label>Causa Desfavorable (si aplica)</label><input id="itv-causa" class="form-input" placeholder="Motivo del rechazo" value="${data ? (data.causa || '') : ''}"></div>
+      <div class="form-group"><label>Importe (€)</label><input id="itv-coste" type="number" class="form-input" placeholder="0,00" step="0.01" value="${data ? data.coste : ''}"></div>
+      <div class="form-group"><label>Nº Factura / Informe / Recibo</label><input id="itv-fact" class="form-input" placeholder="Ej: 1830/26/07/085" value="${data ? (data.factura || '') : ''}"></div>
     </div>
-    <div class="form-group"><label>Fecha de vencimiento *</label><input id="itv-venc" type="date" class="form-input" value="${data ? data.fechaVencimiento : ''}"></div>
+
+    <div class="form-group"><label>Fecha de vencimiento *</label>
+      <input id="itv-venc" type="date" class="form-input" value="${data ? data.fechaVencimiento : ''}">
+      <div id="itv-rule-hint" style="font-size:0.75rem;margin-top:6px;padding:8px 12px;border-radius:6px;background:var(--clr-surface-2);border:1px solid var(--clr-border);display:none"></div>
+    </div>
+
+    <div class="form-group"><label>Causa Desfavorable (si aplica)</label><input id="itv-causa" class="form-input" placeholder="Motivo del rechazo" value="${data ? (data.causa || '') : ''}"></div>
     <div class="form-group"><label>Notas adicionales</label><textarea id="itv-notas" class="form-input form-textarea" placeholder="Opcional">${data ? (data.notas || '') : ''}</textarea></div>
+    
+    <div class="form-group">
+      <label>📄 Adjuntar Informe / Recibo ITV (Opcional)</label>
+      <input type="file" id="itv-adjunto" class="form-input" accept="image/*,application/pdf" capture="environment">
+      ${data && data.adjunto ? `<p style="font-size:0.75rem;color:var(--clr-accent);margin-top:4px">✓ Ya hay un informe adjunto</p>` : ''}
+    </div>
+
     <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-itv">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
   </div>`);
 
-  document.getElementById('btn-save-itv').onclick = () => {
+  // Lógica de cálculo automático según el RD 920/2017 de la DGT
+  const calcITVExpiration = () => {
+    const fechaInspVal = document.getElementById('itv-fecha').value;
+    const months = parseInt(document.getElementById('itv-periodo').value) || 12;
+    const hintEl = document.getElementById('itv-rule-hint');
+    if (!fechaInspVal) return;
+
+    const dtInsp = new Date(fechaInspVal + 'T00:00:00');
+    let baseDate = new Date(dtInsp);
+    let isEarlyWithin30Days = false;
+
+    if (prevVenc) {
+      const dtPrevVenc = new Date(prevVenc + 'T00:00:00');
+      const diffMs = dtPrevVenc - dtInsp;
+      const diffDays = Math.ceil(diffMs / 86400000);
+
+      // Si se pasa dentro de los 30 días previos a la fecha de vencimiento anterior
+      if (diffDays >= 0 && diffDays <= 30) {
+        baseDate = new Date(dtPrevVenc);
+        isEarlyWithin30Days = true;
+      }
+    }
+
+    baseDate.setMonth(baseDate.getMonth() + months);
+    const calculatedVencStr = baseDate.toISOString().split('T')[0];
+
+    if (!isEdit || !data?.fechaVencimiento) {
+      document.getElementById('itv-venc').value = calculatedVencStr;
+    }
+
+    if (isEarlyWithin30Days && hintEl) {
+      hintEl.style.display = 'block';
+      hintEl.innerHTML = `💡 <strong>Normativa ITV (RD 920/2017):</strong> Al pasar la inspección dentro de los 30 días previos a su vencimiento previo (<strong>${fmt.date(prevVenc)}</strong>), la nueva validez se calcula desde la fecha de vencimiento original original → <strong style="color:var(--clr-accent)">${fmt.date(calculatedVencStr)}</strong>.`;
+    } else if (hintEl) {
+      hintEl.style.display = 'none';
+    }
+  };
+
+  document.getElementById('itv-fecha').onchange = calcITVExpiration;
+  document.getElementById('itv-periodo').onchange = calcITVExpiration;
+  if (!isEdit) calcITVExpiration();
+
+  document.getElementById('btn-save-itv').onclick = async () => {
+    const adjFile = document.getElementById('itv-adjunto')?.files[0];
+    let adjData = data?.adjunto || null;
+    if (adjFile) {
+      const fileDataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(adjFile); });
+      adjData = { fileData: fileDataUrl, fileType: adjFile.type, name: adjFile.name };
+    }
+
     const fields = {
       fechaInspeccion: document.getElementById('itv-fecha').value,
       resultado: document.getElementById('itv-res').value,
@@ -1863,14 +2255,14 @@ function openITVModal(id = null) {
       factura: document.getElementById('itv-fact').value.trim(),
       causa: document.getElementById('itv-causa').value.trim(),
       fechaVencimiento: document.getElementById('itv-venc').value,
-      notas: document.getElementById('itv-notas').value.trim()
+      notas: document.getElementById('itv-notas').value.trim(),
+      adjunto: adjData
     };
     if (!fields.fechaInspeccion || !fields.fechaVencimiento) { alert('Completa los campos obligatorios (*)'); return; }
 
     if (isEdit) updateITV(id, fields);
     else addITV(fields);
 
-    // Actualizar vehículo si es favorable
     if (fields.resultado !== 'No Apto') {
       const s = getState();
       const veh = s.vehicles.find(x => x.id === v.id);
@@ -1886,9 +2278,14 @@ function renderSeguro() {
   const v = getActiveVehicle(); const c = document.getElementById('main-content');
   if (!v) { c.innerHTML = noVehicle('Seguro'); return; }
   const items = getSeguroByVehicle(v.id);
+  const docs = getDocsByVehicle(v.id);
+
+  const totalPoliza = items.reduce((s, x) => s + parseFloat(x.precio || 0), 0);
+  const totalRecibos = items.reduce((s, x) => s + (x.recibos || []).reduce((sr, r) => sr + parseFloat(r.importe || 0), 0), 0);
+
   c.innerHTML = `
     ${renderPageBack()}
-    <div class="page-header"><div><h1 class="page-title">Seguro</h1><p class="page-sub">Gestión de Pólizas y Coberturas</p></div>
+    <div class="page-header"><div><h1 class="page-title">Seguro</h1><p class="page-sub">Gestión de Pólizas, Coberturas y Recibos Pagados</p></div>
       <button class="btn btn-primary" id="btn-add-seg">+ Nuevo Seguro</button></div>
     ${!items.length ? emptySection('🛡️', 'Sin pólizas de seguro registradas') : `
     <div class="table-wrap"><table class="data-table">
@@ -1896,24 +2293,43 @@ function renderSeguro() {
         <th>Compañía / Póliza</th>
         <th>Cobertura / Tipo</th>
         <th>Precio / Pago</th>
+        <th>Recibos Pagados</th>
+        <th>Póliza Digital</th>
         <th>Vencimiento</th>
-        <th>Estado</th>
         <th class="text-right">Acciones</th>
       </tr></thead>
-      <tbody>${items.map(s => `<tr>
-        <td data-label="Compañía"><strong>${s.compania}</strong><br><small class="text-muted">Pól: ${s.poliza || 'S/N'}</small></td>
-        <td data-label="Cobertura">${s.tipoSG}<br><small class="text-muted">${s.tipoPol || '—'}</small></td>
-        <td data-label="Precio" class="gasto">${fmt.currency(s.precio)}<br><small class="text-muted">Pago: ${s.tipoPago}</small></td>
+      <tbody>${items.map(s => {
+        const numRecibos = s.recibos?.length || 0;
+        const totalPagadoRecibos = (s.recibos || []).reduce((acc, r) => acc + parseFloat(r.importe || 0), 0);
+        const linkedDoc = docs.find(d => (d.linkedTo?.type === 'seguro' && d.linkedTo?.id === s.id) || (d.categoria === 'Seguro / Póliza' && d.nombre.toLowerCase().includes(s.compania.toLowerCase())));
+
+        return `<tr>
+        <td data-label="Compañía"><strong>${escapeHtml(s.compania)}</strong><br><small class="text-muted">Pól: ${escapeHtml(s.poliza || 'S/N')}</small></td>
+        <td data-label="Cobertura">${escapeHtml(s.tipoSG)}<br><small class="text-muted">${escapeHtml(s.tipoPol || '—')}</small></td>
+        <td data-label="Precio" class="gasto">${fmt.currency(s.precio)}<br><small class="text-muted">Pago: ${escapeHtml(s.tipoPago)}</small></td>
+        <td data-label="Recibos">
+          <button class="btn btn-xs btn-secondary" onclick="openRecibosSeguroModal('${s.id}')" style="font-size:0.75rem">
+            🧾 ${numRecibos} recibo${numRecibos !== 1 ? 's' : ''} (${fmt.currency(totalPagadoRecibos)})
+          </button>
+        </td>
+        <td data-label="Póliza Digital">
+          ${linkedDoc
+            ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewDocument('${linkedDoc.id}')" title="Ver póliza guardada en Guantera">📄 Póliza Digital</button>`
+            : `<button class="btn btn-xs btn-adjunto-pill" onclick="openDocumentoModal(null, renderSeguro, 'Seguro / Póliza', {type:'seguro',id:'${s.id}'})" title="Subir póliza a Guantera">+ 📄 Adjuntar Póliza</button>`}
+        </td>
         <td data-label="Vencimiento">${fmt.date(s.fechaVencimiento)}</td>
-        <td data-label="Estado">${daysBadge(s.fechaVencimiento)}</td>
-        <td class="text-right">
+        <td class="text-right" style="white-space:nowrap">
             <div class="flex gap-2 justify-end">
               <button class="btn btn-ghost btn-xs" data-edit="seguro" data-id="${s.id}" title="Editar seguro" style="border:1px solid var(--clr-border)">✏️</button>
               <button class="btn btn-danger btn-xs btn-ghost" data-delete="seguro" data-id="${s.id}" title="Eliminar póliza">✕</button>
             </div>
         </td>
-      </tr>`).join('')}</tbody>
-    </table></div>`}
+      </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <div class="totals-bar">
+      <span>Total Pólizas: <strong class="gasto">${fmt.currency(totalPoliza)}</strong> &nbsp;|&nbsp; Total Abonado en Recibos: <strong style="color:var(--clr-accent)">${fmt.currency(totalRecibos)}</strong></span>
+    </div>`}
   `;
 
   document.getElementById('btn-add-seg').onclick = () => showSeguroModal();
@@ -1924,38 +2340,70 @@ function renderSeguro() {
 function showSeguroModal(existingSeguro = null) {
   const v = getActiveVehicle();
   const isEdit = !!existingSeguro;
-  openModal(isEdit ? 'Editar Póliza de Seguro' : 'Registrar Nuevo Seguro', `<div class="form">
+  const items = v ? getSeguroByVehicle(v.id) : [];
+  const latestSeg = items.length ? items[items.length - 1] : null;
+
+  // Auto-calcular fecha de vencimiento (+1 año respecto al vencimiento anterior si existe)
+  let defaultVenc = '';
+  if (!isEdit && latestSeg?.fechaVencimiento) {
+    try {
+      const dt = new Date(latestSeg.fechaVencimiento + 'T00:00:00');
+      dt.setFullYear(dt.getFullYear() + 1);
+      defaultVenc = dt.toISOString().split('T')[0];
+    } catch (e) {}
+  }
+
+  // Pre-cargar datos si es un nuevo seguro y ya existe uno previo
+  const formData = existingSeguro || (latestSeg ? {
+    compania: latestSeg.compania,
+    poliza: latestSeg.poliza,
+    tipoSG: latestSeg.tipoSG,
+    tipoPol: latestSeg.tipoPol,
+    tipoPago: latestSeg.tipoPago,
+    fechaVencimiento: defaultVenc,
+    precio: latestSeg.precio
+  } : null);
+
+  openModal(isEdit ? 'Editar Póliza de Seguro' : (latestSeg ? 'Renovar / Nuevo Seguro (Datos Precargados)' : 'Registrar Nuevo Seguro'), `<div class="form">
       <div class="form-row">
-        <div class="form-group"><label>Compañía Aseguradora *</label><input id="sg-comp" class="form-input" placeholder="Ej: Mapfre" value="${existingSeguro?.compania || ''}"></div>
-        <div class="form-group"><label>Nº de Póliza</label><input id="sg-pol" class="form-input" placeholder="Nº Póliza..." value="${existingSeguro?.poliza || ''}"></div>
+        <div class="form-group"><label>Compañía Aseguradora *</label><input id="sg-comp" class="form-input" placeholder="Ej: Mapfre" value="${formData?.compania ? escapeHtml(formData.compania) : ''}"></div>
+        <div class="form-group"><label>Nº de Póliza</label><input id="sg-pol" class="form-input" placeholder="Nº Póliza..." value="${formData?.poliza ? escapeHtml(formData.poliza) : ''}"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Tipo de Seguro *</label><select id="sg-tipo-sg" class="form-input">
-          <option ${existingSeguro?.tipoSG === 'Todo Riesgo' ? 'selected' : ''}>Todo Riesgo</option>
-          <option ${existingSeguro?.tipoSG === 'Todo Riesgo con Franquicia' ? 'selected' : ''}>Todo Riesgo con Franquicia</option>
-          <option ${existingSeguro?.tipoSG === 'Terceros Ampliado' ? 'selected' : ''}>Terceros Ampliado</option>
-          <option ${existingSeguro?.tipoSG === 'Terceros' ? 'selected' : ''}>Terceros</option>
+          <option ${formData?.tipoSG === 'Todo Riesgo' ? 'selected' : ''}>Todo Riesgo</option>
+          <option ${formData?.tipoSG === 'Todo Riesgo con Franquicia' ? 'selected' : ''}>Todo Riesgo con Franquicia</option>
+          <option ${formData?.tipoSG === 'Terceros Ampliado' ? 'selected' : ''}>Terceros Ampliado</option>
+          <option ${formData?.tipoSG === 'Terceros' ? 'selected' : ''}>Terceros</option>
         </select></div>
-        <div class="form-group"><label>Tipo de Póliza</label><input id="sg-tipo-pol" class="form-input" placeholder="Ej: Particular, Profesional..." value="${existingSeguro?.tipoPol || ''}"></div>
+        <div class="form-group"><label>Tipo de Póliza</label><input id="sg-tipo-pol" class="form-input" placeholder="Ej: Particular, Profesional..." value="${formData?.tipoPol ? escapeHtml(formData.tipoPol) : ''}"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Fecha de Vencimiento *</label><input id="sg-venc" type="date" class="form-input" value="${existingSeguro?.fechaVencimiento || ''}"></div>
+        <div class="form-group"><label>Fecha de Vencimiento *</label><input id="sg-venc" type="date" class="form-input" value="${formData?.fechaVencimiento || ''}"></div>
         <div class="form-group"><label>Tipo de Pago *</label><select id="sg-pago" class="form-input">
-          <option ${existingSeguro?.tipoPago === 'Anual' ? 'selected' : ''}>Anual</option>
-          <option ${existingSeguro?.tipoPago === 'Semestral' ? 'selected' : ''}>Semestral</option>
-          <option ${existingSeguro?.tipoPago === 'Trimestral' ? 'selected' : ''}>Trimestral</option>
-          <option ${existingSeguro?.tipoPago === 'Mensual' ? 'selected' : ''}>Mensual</option>
+          <option ${formData?.tipoPago === 'Anual' ? 'selected' : ''}>Anual</option>
+          <option ${formData?.tipoPago === 'Semestral' ? 'selected' : ''}>Semestral</option>
+          <option ${formData?.tipoPago === 'Trimestral' ? 'selected' : ''}>Trimestral</option>
+          <option ${formData?.tipoPago === 'Mensual' ? 'selected' : ''}>Mensual</option>
         </select></div>
       </div>
-      <div class="form-group"><label>Importe del Recibo (€) *</label><input id="sg-precio" type="number" class="form-input" placeholder="0.00" step="0.01" value="${existingSeguro?.precio || ''}"></div>
+      <div class="form-group"><label>Importe Anual / Póliza (€) *</label><input id="sg-precio" type="number" class="form-input" placeholder="0.00" step="0.01" value="${formData?.precio || ''}"></div>
+      
+      <div class="form-group">
+        <label>📄 Adjuntar Póliza en Guantera Digital (Opcional)</label>
+        <input type="file" id="sg-doc-file" class="form-input" accept="image/*,application/pdf" capture="environment">
+        <p style="font-size:0.72rem;color:var(--clr-text-muted);margin-top:4px;font-style:italic">Se guardará automáticamente en tu Guantera Digital vinculado a este seguro.</p>
+      </div>
+
       <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-primary" id="btn-save-seg">${isEdit ? 'Guardar Cambios' : 'Registrar Seguro'}</button></div>
     </div>`);
 
-  document.getElementById('btn-save-seg').onclick = () => {
+  document.getElementById('btn-save-seg').onclick = async () => {
     const comp = document.getElementById('sg-comp').value.trim();
     const venc = document.getElementById('sg-venc').value;
     const precio = document.getElementById('sg-precio').value;
+    const docFile = document.getElementById('sg-doc-file')?.files[0];
 
     if (!comp || !venc || precio === '') { alert('Completa los campos obligatorios (*)'); return; }
 
@@ -1966,18 +2414,133 @@ function showSeguroModal(existingSeguro = null) {
       tipoPol: document.getElementById('sg-tipo-pol').value.trim(),
       fechaVencimiento: venc,
       tipoPago: document.getElementById('sg-pago').value,
-      precio: parseFloat(precio)
+      precio: parseFloat(precio),
+      recibos: existingSeguro?.recibos || []
     };
 
+    let savedSeg;
     if (isEdit) {
       updateSeguro(existingSeguro.id, data);
+      savedSeg = { ...existingSeguro, ...data };
       showToast('Póliza actualizada correctamente');
     } else {
-      addSeguro(data);
+      savedSeg = addSeguro(data);
       showToast('Póliza de seguro registrada — Gasto actualizado');
     }
 
-    closeModal(); renderSeguro(); renderAlertBanner(v.id);
+    if (docFile) {
+      try {
+        const fileDataUrl = await new Promise((res, rej) => {
+          const reader = new FileReader(); reader.onload = () => res(reader.result); reader.onerror = rej; reader.readAsDataURL(docFile);
+        });
+        addDocumento({
+          nombre: `Póliza ${comp} (${savedSeg.poliza || 'S/N'})`,
+          categoria: 'Seguro / Póliza',
+          fileData: fileDataUrl,
+          fileType: docFile.type,
+          fechaSubida: fmt.today(),
+          storageMode: 'base64',
+          linkedTo: { type: 'seguro', id: savedSeg.id }
+        });
+        showToast('Póliza guardada también en Guantera Digital');
+      } catch (err) { console.error('Error guardando documento de póliza:', err); }
+    }
+
+    closeModal(); renderSeguro(); if (v) renderAlertBanner(v.id);
+  };
+}
+
+/* Modal de Gestión de Recibos de Seguro */
+function openRecibosSeguroModal(seguroId) {
+  const seg = getState().seguro.find(s => s.id === seguroId);
+  if (!seg) return;
+  const recibos = seg.recibos || [];
+  const totalPagado = recibos.reduce((s, r) => s + parseFloat(r.importe || 0), 0);
+
+  const renderModalContent = () => {
+    const currentSeg = getState().seguro.find(s => s.id === seguroId);
+    const currentRecibos = currentSeg?.recibos || [];
+    const currentTotal = currentRecibos.reduce((s, r) => s + parseFloat(r.importe || 0), 0);
+
+    return `
+      <div style="margin-bottom:14px;padding:10px 14px;background:var(--clr-surface-2);border-radius:8px;border:1px solid var(--clr-border);display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong style="color:var(--clr-accent)">${escapeHtml(seg.compania)}</strong> · Póliza ${escapeHtml(seg.poliza||'S/N')}<br>
+          <small class="text-muted">Importe Póliza: ${fmt.currency(seg.precio)} | Pago: ${escapeHtml(seg.tipoPago)}</small>
+        </div>
+        <div style="text-align:right">
+          <span style="font-size:0.75rem;color:var(--clr-text-muted)">Total Recibos:</span><br>
+          <strong class="gasto">${fmt.currency(currentTotal)}</strong>
+        </div>
+      </div>
+
+      <div style="max-height:220px;overflow-y:auto;margin-bottom:16px">
+        ${!currentRecibos.length ? '<p style="text-align:center;color:var(--clr-text-muted);font-size:0.85rem;padding:15px">No hay recibos guardados aún. Registra el primero abajo.</p>' : `
+        <table class="recibos-list-table">
+          <thead><tr><th>Fecha</th><th>Concepto</th><th>Nº Recibo</th><th>Importe</th><th>Adjunto</th><th></th></tr></thead>
+          <tbody>${currentRecibos.map(r => `<tr>
+            <td>${fmt.date(r.fecha)}</td>
+            <td><strong>${escapeHtml(r.concepto)}</strong></td>
+            <td><code>${escapeHtml(r.numRecibo||'—')}</code></td>
+            <td class="gasto">${fmt.currency(r.importe)}</td>
+            <td>${r.adjuntoData ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewAdjuntoModal('Recibo ${escapeHtml(r.concepto)}', '${r.adjuntoData}', '${r.fileType||''}')">📄 Ver</button>` : '—'}</td>
+            <td class="text-right"><button class="btn btn-danger btn-xs" onclick="deleteReciboSeguro('${seg.id}','${r.id}'); openRecibosSeguroModal('${seg.id}'); renderSeguro();">✕</button></td>
+          </tr>`).join('')}</tbody>
+        </table>`}
+      </div>
+
+      <div style="border-top:1px solid var(--clr-border);padding-top:14px">
+        <h4 style="font-size:0.88rem;margin-bottom:10px">+ Registrar Nuevo Recibo de Pago</h4>
+        <div class="form">
+          <div class="form-row">
+            <div class="form-group"><label>Fecha de Pago *</label><input id="rcb-fecha" type="date" class="form-input" value="${fmt.today()}"></div>
+            <div class="form-group"><label>Concepto *</label><input id="rcb-conc" class="form-input" placeholder="Ej: Recibo 1er Trimestre" value="Recibo ${seg.tipoPago}"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Importe Recibo (€) *</label><input id="rcb-imp" type="number" class="form-input" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label>Nº Recibo / Referencia</label><input id="rcb-num" class="form-input" placeholder="Nº Recibo bancario..."></div>
+          </div>
+          <div class="form-group">
+            <label>📷 Foto o PDF del Recibo (Opcional)</label>
+            <input type="file" id="rcb-file" class="form-input" accept="image/*,application/pdf" capture="environment">
+          </div>
+          <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" id="btn-save-rcb">✓ Guardar Recibo</button></div>
+        </div>
+      </div>
+    `;
+  };
+
+  openModal(`🧾 Recibos de Pago — ${escapeHtml(seg.compania)}`, renderModalContent());
+
+  document.getElementById('btn-save-rcb').onclick = async () => {
+    const fecha = document.getElementById('rcb-fecha').value;
+    const conc = document.getElementById('rcb-conc').value.trim();
+    const imp = parseFloat(document.getElementById('rcb-imp').value);
+    const num = document.getElementById('rcb-num').value.trim();
+    const file = document.getElementById('rcb-file')?.files[0];
+
+    if (!fecha || !conc || isNaN(imp)) { alert('Completa la fecha, concepto e importe del recibo.'); return; }
+
+    let adjData = '';
+    let fileType = '';
+    if (file) {
+      if (file.size > 800 * 1024) { alert('El recibo adjunto es muy grande (>800KB). Usando archivo comprimido o más pequeño.'); }
+      adjData = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(file); });
+      fileType = file.type;
+    }
+
+    addReciboSeguro(seg.id, {
+      fecha,
+      concepto: conc,
+      importe: imp,
+      numRecibo: num,
+      adjuntoData: adjData,
+      fileType
+    });
+
+    openRecibosSeguroModal(seg.id);
+    renderSeguro();
+    showToast('Recibo de seguro guardado correctamente');
   };
 }
 
@@ -1991,7 +2554,7 @@ function renderMultas() {
 
   c.innerHTML = `
     ${renderPageBack()}
-    <div class="page-header"><div><h1 class="page-title">Multas</h1><p class="page-sub">Gestión de Sanciones DGT/Otras</p></div>
+    <div class="page-header"><div><h1 class="page-title">Multas</h1><p class="page-sub">Gestión de Sanciones DGT/Otras y Justificantes de Pago</p></div>
       <button class="btn btn-primary" id="btn-add-mul">+ Nueva Multa</button></div>
     ${!items.length ? emptySection('📋', 'Sin multas registradas') : `
     <div class="table-wrap"><table class="data-table">
@@ -2000,6 +2563,7 @@ function renderMultas() {
         <th>Fecha Denuncia / Provincia</th>
         <th>Hecho</th>
         <th>Importes</th>
+        <th>Justificante</th>
         <th>Estado / Vencimiento</th>
         <th>Acción</th>
         <th></th>
@@ -2007,12 +2571,15 @@ function renderMultas() {
       <tbody>${items.map(m => {
     const hechoText = m.hecho || m.motivo || 'Sin detalles';
     return `<tr>
-        <td data-label="Expediente"><code class="id-code" title="ID: ${m.id}">${m.expediente || 'S/N'}</code></td>
-        <td data-label="Fecha / Prov.">${fmt.date(m.fechaDenuncia || m.fechaLimite)}<br><small class="text-muted">${m.provincia || '—'}</small></td>
-        <td data-label="Hecho"><span title="${hechoText}">${hechoText.substring(0, 30)}${hechoText.length > 30 ? '...' : ''}</span></td>
+        <td data-label="Expediente"><code class="id-code" title="ID: ${m.id}">${escapeHtml(m.expediente || 'S/N')}</code></td>
+        <td data-label="Fecha / Prov.">${fmt.date(m.fechaDenuncia || m.fechaLimite)}<br><small class="text-muted">${escapeHtml(m.provincia || '—')}</small></td>
+        <td data-label="Hecho"><span title="${escapeHtml(hechoText)}">${escapeHtml(hechoText.substring(0, 30))}${hechoText.length > 30 ? '...' : ''}</span></td>
         <td data-label="Importes">
           <small class="text-muted">Denuncia: ${fmt.currency(m.importe)}</small><br>
           <strong class="${m.estado === 'Pagada' ? 'gasto' : 'text-primary'}">${m.estado === 'Pagada' ? `Pagado: ${fmt.currency(m.importePagado)}` : `Pend: ${fmt.currency(m.importe)}`}</strong>
+        </td>
+        <td data-label="Justificante">
+          ${m.adjunto ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewAdjuntoModal('Justificante Multa ${escapeHtml(m.expediente||'')}', '${m.adjunto.fileData}', '${m.adjunto.fileType}')">📄 Ver Justificante</button>` : '—'}
         </td>
         <td data-label="Estado">
           ${stateBadge(m.estado)}<br>
@@ -2040,19 +2607,36 @@ function renderMultas() {
     const multaId = b.dataset.pay;
     const m = items.find(x => x.id === multaId);
     openModal('Registrar Pago', `<div class="form">
-        <p class="mb-4">Vas a marcar como pagada la denuncia <strong>${m.expediente}</strong>.</p>
+        <p class="mb-4">Vas a marcar como pagada la denuncia <strong>${escapeHtml(m.expediente)}</strong>.</p>
         <div class="form-row">
           <div class="form-group"><label>Importe Real Pagado (€) *</label><input id="mp-imp" type="number" class="form-input" value="${m.importe * 0.5}" step="0.01"></div>
           <div class="form-group"><label>Fecha de Pago *</label><input id="mp-fecha" type="date" class="form-input" value="${fmt.today()}"></div>
         </div>
+        <div class="form-group">
+          <label>📷 Justificante de Pago (Opcional)</label>
+          <input type="file" id="mp-adjunto" class="form-input" accept="image/*,application/pdf" capture="environment">
+        </div>
         <p class="text-[10px] text-slate-500 italic">Por defecto se aplica el 50% de descuento por pronto pago.</p>
         <div class="form-actions mt-4"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-confirm-pay">Confirmar Pago</button></div>
       </div>`);
-    document.getElementById('btn-confirm-pay').onclick = () => {
+    document.getElementById('btn-confirm-pay').onclick = async () => {
       const imp = document.getElementById('mp-imp').value;
       const fecha = document.getElementById('mp-fecha').value;
+      const file = document.getElementById('mp-adjunto')?.files[0];
       if (imp === '' || !fecha) return;
+
+      let adjData = m.adjunto || null;
+      if (file) {
+        const fileDataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(file); });
+        adjData = { fileData: fileDataUrl, fileType: file.type, name: file.name };
+      }
+
       updateMultaEstado(multaId, 'Pagada', parseFloat(imp), fecha);
+      if (adjData) {
+        const mul = getState().multas.find(x => x.id === multaId);
+        if (mul) mul.adjunto = adjData;
+        saveState();
+      }
       closeModal(); renderMultas(); showToast('Pago registrado — Gasto actualizado');
     };
   });
@@ -2064,46 +2648,63 @@ function renderMultas() {
 function showMultaModal(existingMulta = null) {
   const v = getActiveVehicle();
   const isEdit = !!existingMulta;
-  openModal(isEdit ? 'Editar Multa' : 'Registrar Multa / Denuncia', `<div class="form">
+
+  const modalHtml = `<div class="form">
       <div class="form-row">
-        <div class="form-group"><label>Nº Expediente *</label><input id="ml-exp" class="form-input" placeholder="Ej: 12.345.678-9" value="${existingMulta?.expediente || ''}"></div>
+        <div class="form-group"><label>Nº Expediente *</label><input id="ml-exp" class="form-input" placeholder="Ej: 28001234567" value="${existingMulta?.expediente ? escapeHtml(existingMulta.expediente) : ''}"></div>
         <div class="form-group"><label>Fecha Denuncia *</label><input id="ml-fden" type="date" class="form-input" value="${existingMulta?.fechaDenuncia || fmt.today()}"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Provincia / Municipio</label><input id="ml-prov" class="form-input" placeholder="Ej: Madrid" value="${existingMulta?.provincia || ''}"></div>
-        <div class="form-group"><label>Estado inicial</label><select id="ml-estado" class="form-input">
-          <option ${existingMulta?.estado === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
-          <option ${existingMulta?.estado === 'Pagada' ? 'selected' : ''}>Pagada</option>
+        <div class="form-group"><label>Provincia / Municipio</label><input id="ml-prov" class="form-input" placeholder="Ej: Madrid (DGT)" value="${existingMulta?.provincia ? escapeHtml(existingMulta.provincia) : ''}"></div>
+        <div class="form-group"><label>Estado *</label><select id="ml-est" class="form-input">
+          <option value="Pendiente" ${existingMulta?.estado === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+          <option value="Pagada" ${existingMulta?.estado === 'Pagada' ? 'selected' : ''}>Pagada</option>
         </select></div>
       </div>
-      <div class="form-group"><label>Hecho Denunciado *</label>
-        <textarea id="ml-hecho" class="form-input form-textarea" placeholder="Describe brevemente la infracción...">${existingMulta?.hecho || existingMulta?.motivo || ''}</textarea>
-      </div>
+      <div class="form-group"><label>Hecho Notificado / Motivo *</label><textarea id="ml-hecho" class="form-input form-textarea" placeholder="Ej: Exceso de velocidad en M-30...">${existingMulta ? escapeHtml(existingMulta.hecho || existingMulta.motivo || '') : ''}</textarea></div>
       <div class="form-row">
         <div class="form-group"><label>Importe Denuncia (€) *</label><input id="ml-imp" type="number" class="form-input" placeholder="100.00" step="0.01" value="${existingMulta?.importe || ''}"></div>
-        <div class="form-group"><label>Fecha Límite (Pronto Pago)</label><input id="ml-flim" type="date" class="form-input" value="${existingMulta?.fechaLimite || ''}"></div>
+        <div class="form-group"><label>Fecha Límite Pago Reducido</label><input id="ml-flim" type="date" class="form-input" value="${existingMulta?.fechaLimite || ''}"></div>
       </div>
-      <div id="ml-pay-fields" style="display: ${existingMulta?.estado === 'Pagada' ? 'block' : 'none'};">
-        <div class="form-row bg-primary/5 p-3 rounded-lg border border-primary/20">
-          <div class="form-group"><label>Importe Pagado (€) *</label><input id="ml-imp-pag" type="number" class="form-input" placeholder="50.00" step="0.01" value="${existingMulta?.importePagado || ''}"></div>
-          <div class="form-group"><label>Fecha de Pago *</label><input id="ml-fpag" type="date" class="form-input" value="${existingMulta?.fechaPago || fmt.today()}"></div>
-        </div>
+      
+      <div id="ml-pagado-fields" class="${existingMulta?.estado === 'Pagada' ? '' : 'hidden'} flex gap-4 p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 my-2">
+        <div class="form-group flex-1"><label>Importe Pagado (€)</label><input id="ml-imp-pag" type="number" class="form-input" step="0.01" value="${existingMulta?.importePagado || ''}"></div>
+        <div class="form-group flex-1"><label>Fecha Pago</label><input id="ml-fpag" type="date" class="form-input" value="${existingMulta?.fechaPago || ''}"></div>
       </div>
+
+      <div class="form-group">
+        <label>📄 Justificante / Notificación (Opcional)</label>
+        <input type="file" id="ml-adjunto" class="form-input" accept="image/*,application/pdf" capture="environment">
+        ${existingMulta?.adjunto ? `<p style="font-size:0.75rem;color:var(--clr-accent);margin-top:4px">✓ Ya hay un justificante adjunto</p>` : ''}
+      </div>
+
       <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-primary" id="btn-save-mul">${isEdit ? 'Guardar Cambios' : 'Registrar Multa'}</button></div>
-    </div>`);
+    </div>`;
 
-  const estSel = document.getElementById('ml-estado');
-  const payDiv = document.getElementById('ml-pay-fields');
-  estSel.onchange = () => { payDiv.style.display = estSel.value === 'Pagada' ? 'block' : 'none'; };
+  openModal(isEdit ? 'Editar Denuncia' : 'Registrar Nueva Multa', modalHtml);
 
-  document.getElementById('btn-save-mul').onclick = () => {
+  const estSel = document.getElementById('ml-est');
+  const pagFields = document.getElementById('ml-pagado-fields');
+  estSel.onchange = () => {
+    if (estSel.value === 'Pagada') pagFields.classList.remove('hidden');
+    else pagFields.classList.add('hidden');
+  };
+
+  document.getElementById('btn-save-mul').onclick = async () => {
     const exp = document.getElementById('ml-exp').value.trim();
     const fden = document.getElementById('ml-fden').value;
     const hecho = document.getElementById('ml-hecho').value.trim();
     const imp = document.getElementById('ml-imp').value;
+    const adjFile = document.getElementById('ml-adjunto')?.files[0];
 
     if (!exp || !fden || !hecho || imp === '') { alert('Completa los campos obligatorios (*)'); return; }
+
+    let adjData = existingMulta?.adjunto || null;
+    if (adjFile) {
+      const fileDataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(adjFile); });
+      adjData = { fileData: fileDataUrl, fileType: adjFile.type, name: adjFile.name };
+    }
 
     const estado = estSel.value;
     const data = {
@@ -2115,7 +2716,8 @@ function showMultaModal(existingMulta = null) {
       importe: parseFloat(imp),
       fechaLimite: document.getElementById('ml-flim').value || '',
       importePagado: 0,
-      fechaPago: ''
+      fechaPago: '',
+      adjunto: adjData
     };
 
     if (estado === 'Pagada') {
@@ -2146,15 +2748,18 @@ function renderOtros() {
   const total = items.reduce((s, o) => s + parseFloat(o.importe || 0), 0);
   c.innerHTML = `
     ${renderPageBack()}
-    <div class="page-header"><div><h1 class="page-title">Otros</h1><p class="page-sub">Impuestos y Permisos</p></div>
+    <div class="page-header"><div><h1 class="page-title">Otros</h1><p class="page-sub">Impuestos, Tasas y Permisos con Justificante</p></div>
       <button class="btn btn-primary" id="btn-add-otro">+ Añadir Registro</button></div>
     ${!items.length ? emptySection('📁', 'Sin registros adicionales') : `
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>ID</th><th>Descripción</th><th>Importe</th><th>Vencimiento</th><th>Estado</th><th class="text-right">Acciones</th></tr></thead>
+      <thead><tr><th>ID</th><th>Descripción</th><th>Importe</th><th>Recibo / Justificante</th><th>Vencimiento</th><th>Estado</th><th class="text-right">Acciones</th></tr></thead>
       <tbody>${items.map(o => `<tr>
         <td data-label="ID"><code class="id-code">${o.id}</code></td>
-        <td data-label="Descripción"><strong>${o.descripcion}</strong></td>
+        <td data-label="Descripción"><strong>${escapeHtml(o.descripcion)}</strong></td>
         <td data-label="Importe" class="gasto">${fmt.currency(o.importe)}</td>
+        <td data-label="Recibo">
+          ${o.adjunto ? `<button class="btn btn-xs btn-adjunto-pill" onclick="viewAdjuntoModal('Recibo ${escapeHtml(o.descripcion)}', '${o.adjunto.fileData}', '${o.adjunto.fileType}')">📄 Ver Recibo</button>` : '—'}
+        </td>
         <td data-label="Vencimiento">${fmt.date(o.fechaVencimiento)}</td>
         <td data-label="Estado">${daysBadge(o.fechaVencimiento)}</td>
         <td class="text-right">
@@ -2178,19 +2783,33 @@ function openOtroModal(id = null, rerender) {
   const data = isEdit ? getState().otros.find(o => o.id === id) : null;
 
   openModal(isEdit ? 'Editar Registro' : 'Nuevo Registro', `<div class="form">
-      <div class="form-group"><label>Descripción *</label><input id="ot-desc" class="form-input" placeholder="Ej: Impuesto de circulación" value="${data ? data.descripcion : ''}"></div>
+      <div class="form-group"><label>Descripción *</label><input id="ot-desc" class="form-input" placeholder="Ej: Impuesto de circulación (IVTM)" value="${data ? escapeHtml(data.descripcion) : ''}"></div>
       <div class="form-row">
         <div class="form-group"><label>Importe (€) *</label><input id="ot-imp" type="number" class="form-input" placeholder="0.00" step="0.01" min="0" value="${data ? data.importe : ''}"></div>
         <div class="form-group"><label>Fecha de vencimiento</label><input id="ot-venc" type="date" class="form-input" value="${data ? data.fechaVencimiento : ''}"></div>
       </div>
+      <div class="form-group">
+        <label>📄 Recibo / Justificante fiscal (Opcional)</label>
+        <input type="file" id="ot-adjunto" class="form-input" accept="image/*,application/pdf" capture="environment">
+        ${data && data.adjunto ? `<p style="font-size:0.75rem;color:var(--clr-accent);margin-top:4px">✓ Ya hay un recibo adjunto</p>` : ''}
+      </div>
       <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-otro">${isEdit ? 'Actualizar' : 'Registrar'}</button></div>
     </div>`);
 
-  document.getElementById('btn-save-otro').onclick = () => {
+  document.getElementById('btn-save-otro').onclick = async () => {
     const desc = document.getElementById('ot-desc').value.trim();
     const imp = parseFloat(document.getElementById('ot-imp').value);
+    const adjFile = document.getElementById('ot-adjunto')?.files[0];
+
     if (!desc || isNaN(imp)) { alert('Completa los campos obligatorios (*)'); return; }
-    const fields = { descripcion: desc, importe: imp, fechaVencimiento: document.getElementById('ot-venc').value };
+
+    let adjData = data?.adjunto || null;
+    if (adjFile) {
+      const fileDataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(adjFile); });
+      adjData = { fileData: fileDataUrl, fileType: adjFile.type, name: adjFile.name };
+    }
+
+    const fields = { descripcion: desc, importe: imp, fechaVencimiento: document.getElementById('ot-venc').value, adjunto: adjData };
 
     if (isEdit) updateOtro(id, fields);
     else addOtro(fields);
@@ -2308,43 +2927,248 @@ function renderTimeline() {
     </div>`;
 }
 
-/* ======================== WORKSHOP MODE ======================== */
+/* ======================== WORKSHOP HUD ULTRA PREMIUM ======================== */
 function toggleWorkshopMode() {
-  document.body.classList.toggle('workshop-mode');
-  const isOk = document.body.classList.contains('workshop-mode');
-  showToast(isOk ? 'Modo Taller activado 🔧' : 'Modo normal activado');
+  const isOk = document.body.classList.toggle('workshop-mode');
+  if (isOk) {
+    renderWorkshopHUD();
+    showToast('🔧 Modo Taller HUD Activado');
+  } else {
+    router();
+    showToast('Modo Normal Activado');
+  }
 }
 
-/* ======================== GLOBAL SEARCH ======================== */
+function renderWorkshopHUD() {
+  const v = getActiveVehicle();
+  const c = document.getElementById('main-content');
+  if (!v) { c.innerHTML = noVehicle('Modo Taller'); return; }
+
+  const specs = getVehicleSpecs(v.id);
+  const checks = getWorkshopInspection(v.id);
+
+  const INSPECTION_ITEMS = [
+    { id: 'aceite_fugas', label: '🛢️ Nivel de Aceite y Fugas' },
+    { id: 'frenos_discos', label: '🛑 Pastillas y Discos de Freno' },
+    { id: 'neumaticos_dibujo', label: '🛞 Profundidad Neumáticos y Presión' },
+    { id: 'bateria_voltaje', label: '🔋 Voltaje de Batería y Bornes' },
+    { id: 'luces_faros', label: '💡 Juego Completo de Luces' },
+    { id: 'refrigerante_nivel', label: '🌡️ Nivel y Densidad Refrigerante' },
+    { id: 'amortiguadores_holgura', label: '⚙️ Amortiguadores y Rótulas' },
+    { id: 'escape_emisiones', label: '💨 Sistema de Escape y Filtros' }
+  ];
+
+  c.innerHTML = `
+    <div class="workshop-hud-container">
+      <!-- Topbar Taller -->
+      <div class="workshop-topbar">
+        <div>
+          <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;font-weight:700">Ficha de Taller Activa</div>
+          <h2 style="font-size:1.3rem;font-weight:900;margin:2px 0;color:#f8fafc">${escapeHtml(v.icono||'🚗')} ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</h2>
+          <div style="font-size:0.8rem;color:#94a3b8">Matrícula: <strong>${escapeHtml(v.matricula||'S/N')}</strong> &nbsp;·&nbsp; Km: <strong>${fmt.km(v.km)}</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="workshop-vin-badge" title="Número de Bastidor / VIN">VIN: ${escapeHtml(v.bastidor || 'SIN BASTIDOR')}</div>
+          <button class="btn btn-danger btn-sm" onclick="toggleWorkshopMode()" style="font-size:0.8rem;padding:8px 14px">✕ Salir Taller</button>
+        </div>
+      </div>
+
+      <div class="workshop-grid">
+        <!-- Columna Izquierda: Especificaciones Técnicas y Fluidos -->
+        <div class="workshop-card">
+          <div class="workshop-card-title">
+            <span>⚙️ Especificaciones Rápidas</span>
+            <button class="btn btn-ghost btn-xs" onclick="openVehicleSpecsModal('${v.id}')" style="color:#00f0ff;border:1px solid rgba(0,240,255,0.3)">✎ Editar Specs</button>
+          </div>
+          <div class="workshop-specs-grid">
+            <div class="workshop-spec-item">
+              <div class="workshop-spec-label">Aceite Motor</div>
+              <div class="workshop-spec-val">${escapeHtml(specs.aceiteViscosidad)}</div>
+            </div>
+            <div class="workshop-spec-item">
+              <div class="workshop-spec-label">Capacidad Cárter</div>
+              <div class="workshop-spec-val">${escapeHtml(specs.aceiteCapacidad)}</div>
+            </div>
+            <div class="workshop-spec-item">
+              <div class="workshop-spec-label">Presión Delantera</div>
+              <div class="workshop-spec-val">${escapeHtml(specs.presionDelantera)}</div>
+            </div>
+            <div class="workshop-spec-item">
+              <div class="workshop-spec-label">Presión Trasera</div>
+              <div class="workshop-spec-val">${escapeHtml(specs.presionTrasera)}</div>
+            </div>
+            <div class="workshop-spec-item">
+              <div class="workshop-spec-label">Par Apriete Ruedas</div>
+              <div class="workshop-spec-val">${escapeHtml(specs.parRuedas)}</div>
+            </div>
+            <div class="workshop-spec-item">
+              <div class="workshop-spec-label">Líquido Frenos</div>
+              <div class="workshop-spec-val">${escapeHtml(specs.liquidoFrenos)}</div>
+            </div>
+          </div>
+
+          <!-- Teclado de actualización rápida de Km -->
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid #1e2d45;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <span style="font-size:0.75rem;color:#64748b;font-weight:700">ACTUALIZAR ODÓMETRO:</span>
+              <div style="font-size:1.1rem;font-weight:900;color:#00f0ff">${fmt.km(v.km)}</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="openPromptModal('Actualizar Kilometraje del Vehículo:', (newKm) => { if (newKm && !isNaN(parseFloat(newKm))) { updateVehicleKm('${v.id}', parseFloat(newKm)); renderWorkshopHUD(); showToast('Km actualizado'); } }, '${v.km}')">📏 Cambiar Km</button>
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Registrador Rápido a 1-Clic -->
+        <div class="workshop-card">
+          <div class="workshop-card-title">⚡ Registrador Rápido de Taller</div>
+          <p style="font-size:0.75rem;color:#94a3b8;margin-bottom:14px">Registra trabajos comunes al instante con los km actuales sin formularios largos:</p>
+          <div class="workshop-quick-buttons">
+            <button class="workshop-btn-giant" onclick="quickLogMaintenance('aceite')">
+              <span>🛢️</span> <span>Cambio Aceite + Filtro</span>
+            </button>
+            <button class="workshop-btn-giant" onclick="quickLogMaintenance('frenos')">
+              <span>🛑</span> <span>Cambio Pastillas Freno</span>
+            </button>
+            <button class="workshop-btn-giant" onclick="quickLogMaintenance('bateria')">
+              <span>🔋</span> <span>Cambio de Batería</span>
+            </button>
+            <button class="workshop-btn-giant" onclick="quickLogMaintenance('filtros')">
+              <span>💨</span> <span>Filtros Aire / Habitáculo</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Fila Inferior Completa: Inspección Técnica de 8 Puntos -->
+        <div class="workshop-card" style="grid-column: 1 / -1;">
+          <div class="workshop-card-title">
+            <span>📋 Inspección Técnica de Entrada / Salida (8 Puntos)</span>
+            <button class="btn btn-ghost btn-xs" onclick="resetWorkshopInspection('${v.id}');renderWorkshopHUD();showToast('Chequeo de taller reseteado');" style="color:#64748b">Resetear Chequeo</button>
+          </div>
+          <div class="workshop-inspection-list">
+            ${INSPECTION_ITEMS.map(it => {
+              const st = checks[it.id];
+              return `<div class="workshop-check-row">
+                <span style="font-size:0.9rem;font-weight:600">${it.label}</span>
+                <div class="workshop-check-btns">
+                  <button class="workshop-check-btn ok ${st === 'ok' ? 'active' : ''}" onclick="updateWorkshopCheck('${v.id}','${it.id}','ok');renderWorkshopHUD();">✓ Correcto</button>
+                  <button class="workshop-check-btn bad ${st === 'bad' ? 'active' : ''}" onclick="updateWorkshopCheck('${v.id}','${it.id}','bad');renderWorkshopHUD();">✕ Reparar</button>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function quickLogMaintenance(type) {
+  const v = getActiveVehicle();
+  if (!v) return;
+  const km = parseFloat(v.km) || 0;
+  const titles = {
+    aceite: 'Cambio de Aceite y Filtro de Aceite',
+    frenos: 'Cambio de Pastillas de Freno',
+    bateria: 'Sustitución de Batería',
+    filtros: 'Cambio de Filtro de Aire y Habitáculo'
+  };
+  const title = titles[type] || 'Operación de Taller';
+
+  openPromptModal(`Importe estimado o coste total de "${title}" (€):`, (coste) => {
+    const amount = parseFloat(coste) || 0;
+    addRevision({
+      operacion: title,
+      fecha: fmt.today(),
+      km: km,
+      coste: amount,
+      taller: 'En Taller (Autoservicio)',
+      prioridad: 'Media',
+      notas: 'Registrado desde Modo Taller HUD'
+    });
+    renderWorkshopHUD();
+    renderAlertBanner(v.id);
+    showToast(`✓ "${title}" registrado en Revisiones`);
+  }, '0.00');
+}
+
+function openVehicleSpecsModal(vehicleId) {
+  const specs = getVehicleSpecs(vehicleId);
+  openModal('⚙️ Especificaciones Técnicas del Vehículo', `<div class="form">
+    <div class="form-row">
+      <div class="form-group"><label>Viscosidad de Aceite</label><input id="sp-visc" class="form-input" value="${escapeHtml(specs.aceiteViscosidad)}" placeholder="Ej: 5W-30"></div>
+      <div class="form-group"><label>Capacidad del Cárter</label><input id="sp-cap" class="form-input" value="${escapeHtml(specs.aceiteCapacidad)}" placeholder="Ej: 4.3 L"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Presión Delantera</label><input id="sp-pdel" class="form-input" value="${escapeHtml(specs.presionDelantera)}" placeholder="Ej: 2.3 bar"></div>
+      <div class="form-group"><label>Presión Trasera</label><input id="sp-ptras" class="form-input" value="${escapeHtml(specs.presionTrasera)}" placeholder="Ej: 2.1 bar"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Par Apriete Ruedas</label><input id="sp-par" class="form-input" value="${escapeHtml(specs.parRuedas)}" placeholder="Ej: 120 Nm"></div>
+      <div class="form-group"><label>Líquido Frenos</label><input id="sp-liq" class="form-input" value="${escapeHtml(specs.liquidoFrenos)}" placeholder="Ej: DOT 4"></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="btn-save-specs">Guardar Specs</button></div>
+  </div>`);
+
+  document.getElementById('btn-save-specs').onclick = () => {
+    updateVehicleSpecs(vehicleId, {
+      aceiteViscosidad: document.getElementById('sp-visc').value.trim(),
+      aceiteCapacidad: document.getElementById('sp-cap').value.trim(),
+      presionDelantera: document.getElementById('sp-pdel').value.trim(),
+      presionTrasera: document.getElementById('sp-ptras').value.trim(),
+      parRuedas: document.getElementById('sp-par').value.trim(),
+      liquidoFrenos: document.getElementById('sp-liq').value.trim()
+    });
+    closeModal();
+    renderWorkshopHUD();
+    showToast('Especificaciones de taller actualizadas');
+  };
+}
+
+/* ======================== GLOBAL SEARCH (campo-específico, sin JSON.stringify) ======================== */
 function globalSearch(query) {
   if (!query) { router(); return; }
-  const q = query.toLowerCase();
+  const q = query.toLowerCase().trim();
+  if (q.length < 2) return;
   const s = getState();
   const c = document.getElementById('main-content');
 
+  const searchFields = {
+    revisiones: r => [r.operacion, r.taller, r.notas, r.factura],
+    averias:    r => [r.sintomas, r.diagnostico, r.solucion, r.taller, r.factura],
+    recambios:  r => [r.nombre, r.referencia, r.tienda, r.factura, r.marca],
+    itv:        r => [r.estacion, r.resultado, r.causa, r.notas],
+    seguro:     r => [r.compania, r.poliza, r.tipoSG, r.tipoPol],
+    multas:     r => [r.expediente, r.hecho, r.motivo, r.provincia],
+    otros:      r => [r.descripcion],
+  };
+
   const results = [];
-  ['revisiones', 'averias', 'recambios', 'itv', 'seguro', 'multas', 'otros'].forEach(col => {
+  Object.entries(searchFields).forEach(([col, getFields]) => {
     s[col].forEach(r => {
-      const text = JSON.stringify(r).toLowerCase();
-      if (text.includes(q)) {
+      const hit = getFields(r).some(f => f && String(f).toLowerCase().includes(q));
+      if (hit) {
         const v = s.vehicles.find(v => v.id === r.vehicleId);
-        results.push({ ...r, _col: col, _vName: v ? v.marca : '?' });
+        results.push({ ...r, _col: col, _vName: v ? `${v.icono||'🚗'} ${v.marca} ${v.modelo}` : '?' });
       }
     });
   });
 
   c.innerHTML = `
-    <div class="page-header"><div><h1 class="page-title">Resultados de: "${query}"</h1><p class="page-sub">${results.length} coincidencias encontradas</p></div></div>
-    ${!results.length ? emptySection('🔍', 'No se encontraron resultados') : `
+    <div class="page-header"><div><h1 class="page-title">🔍 Resultados: "${escapeHtml(query)}"</h1><p class="page-sub">${results.length} resultado${results.length !== 1 ? 's' : ''} encontrado${results.length !== 1 ? 's' : ''}</p></div></div>
+    ${!results.length ? emptySection('🔍', 'Sin resultados. Prueba con otra búsqueda.') : `
     <div class="table-wrap"><table class="data-table">
       <thead><tr><th>Vehículo</th><th>Módulo</th><th>Concepto / Info</th><th>Fecha</th><th>Importe</th></tr></thead>
-      <tbody>${results.map(r => `<tr>
-        <td data-label="Vehículo"><strong>${r._vName}</strong></td>
-        <td data-label="Módulo" style="text-transform:capitalize">${r._col}</td>
-        <td data-label="Concepto">${r.operacion || r.sintomas || r.nombre || r.tipo || r.motivo || r.descripcion}</td>
-        <td data-label="Fecha">${fmt.date(r.fecha || r.fechaVencimiento || r.fechaRenovacion || r.id.split('-')[1] ? new Date(parseInt(r.id.split('-')[1], 36)).toISOString().split('T')[0] : '—')}</td>
-        <td data-label="Importe" class="gasto">${fmt.currency(r.coste || r.precio || r.precioAnual || r.importe)}</td>
-      </tr>`).join('')}</tbody>
+      <tbody>${results.map(r => {
+        const concept = escapeHtml(r.operacion || r.sintomas || r.nombre || r.compania || r.hecho || r.motivo || r.descripcion || r.resultado || '—');
+        const fecha = r.fecha || r.fechaInspeccion || r.fechaVencimiento || r.fechaDenuncia || '';
+        const importe = r.coste || r.precio || r.importe || 0;
+        return `<tr>
+          <td data-label="Vehículo"><strong>${escapeHtml(r._vName)}</strong></td>
+          <td data-label="Módulo"><span class="badge badge-neutral" style="text-transform:capitalize">${r._col}</span></td>
+          <td data-label="Concepto">${concept}</td>
+          <td data-label="Fecha">${fmt.date(fecha)}</td>
+          <td data-label="Importe" class="gasto">${fmt.currency(importe)}</td>
+        </tr>`;
+      }).join('')}</tbody>
     </table></div>`}
   `;
 }
