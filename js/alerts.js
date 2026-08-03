@@ -107,7 +107,7 @@ function collectKmAlerts(vehicleId) {
  * based on its payment frequency (Anual, Semestral, Trimestral, Mensual) and paid receipts.
  */
 function getNextSeguroPaymentInfo(s) {
-    const mainDueDateStr = s.fechaVencimiento || s.fechaRenovacion;
+    let mainDueDateStr = s.fechaVencimiento || s.fechaRenovacion;
     if (!mainDueDateStr) return null;
 
     const freq = (s.tipoPago || s.frecuenciaPago || s.frecuencia || 'Anual').toLowerCase();
@@ -116,23 +116,43 @@ function getNextSeguroPaymentInfo(s) {
     else if (freq.includes('trimestral')) monthsStep = 3;
     else if (freq.includes('mensual')) monthsStep = 1;
 
-    // Si la frecuencia es Anual (12 meses)
+    const totalPlazos = Math.round(12 / monthsStep); // 1 para Anual, 2 para Semestral, 4 para Trimestral, 12 para Mensual
+    const paidCount = (s.recibos || []).length;
+
+    const origDueDate = new Date(mainDueDateStr + 'T00:00:00');
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    // Si es Anual y ya tiene al menos 1 recibo pagado
     if (monthsStep === 12) {
+        if (paidCount >= 1 && origDueDate <= now) {
+            const nextYearDate = new Date(origDueDate);
+            nextYearDate.setFullYear(nextYearDate.getFullYear() + 1);
+            return {
+                date: nextYearDate.toISOString().split('T')[0],
+                label: `Seguro: renovación anual (${s.compania || 'Seguro'})`
+            };
+        }
         return {
             date: mainDueDateStr,
             label: `Seguro: renovación anual (${s.compania || 'Seguro'})`
         };
     }
 
-    // Generar plazos dentro del periodo anual
-    const mainDueDate = new Date(mainDueDateStr + 'T00:00:00');
-    const startDate = new Date(mainDueDate);
-    startDate.setFullYear(startDate.getFullYear() - 1); // Inicio del ciclo anual
+    // Para plazos fraccionados (Semestral, Trimestral, Mensual)
+    let targetDueDate = new Date(origDueDate);
+    if (paidCount >= totalPlazos && targetDueDate <= now) {
+        targetDueDate.setFullYear(targetDueDate.getFullYear() + 1);
+        mainDueDateStr = targetDueDate.toISOString().split('T')[0];
+    }
+
+    const startDate = new Date(targetDueDate);
+    startDate.setFullYear(startDate.getFullYear() - 1);
 
     const subPeriodDates = [];
     let curr = new Date(startDate);
 
-    while (curr < mainDueDate) {
+    while (curr < targetDueDate) {
         curr = new Date(curr);
         curr.setMonth(curr.getMonth() + monthsStep);
         const dStr = curr.toISOString().split('T')[0];
@@ -141,13 +161,21 @@ function getNextSeguroPaymentInfo(s) {
         }
     }
 
-    // Contar cuántos recibos han sido registrados en s.recibos
-    const paidCount = (s.recibos || []).length;
-    const totalPlazos = subPeriodDates.length;
+    const currentCyclePaid = paidCount % totalPlazos;
 
-    if (paidCount < totalPlazos) {
-        const nextDate = subPeriodDates[paidCount];
-        const numPlazo = paidCount + 1;
+    if (paidCount > 0 && currentCyclePaid === 0 && origDueDate <= now) {
+        const nextYearDate = new Date(origDueDate);
+        nextYearDate.setFullYear(nextYearDate.getFullYear() + 1);
+        return {
+            date: nextYearDate.toISOString().split('T')[0],
+            label: `Seguro: renovación anual (${s.compania || 'Seguro'})`
+        };
+    }
+
+    const nextIndex = currentCyclePaid;
+    if (nextIndex < subPeriodDates.length) {
+        const nextDate = subPeriodDates[nextIndex];
+        const numPlazo = nextIndex + 1;
         const labelPeriodo = monthsStep === 6 ? 'Semestral' : monthsStep === 3 ? 'Trimestral' : 'Mensual';
 
         return {
@@ -156,7 +184,6 @@ function getNextSeguroPaymentInfo(s) {
         };
     }
 
-    // Si ya pagó todos los plazos del año
     return {
         date: mainDueDateStr,
         label: `Seguro: renovación anual (${s.compania || 'Seguro'})`
@@ -184,10 +211,17 @@ function collectAlerts(vehicleId, threshold = 30) {
         pushAlert('ITV vence', latestItv.fechaVencimiento);
     }
 
-    // 2. Seguro: Evaluar según frecuencia de pago (Anual, Semestral, Trimestral, Mensual) y recibos abonados
+    // 2. Seguro: Tomar la póliza activa más reciente por compañía para el vehículo
     const vehicleSeguros = state.seguro.filter(s => s.vehicleId === vehicleId && (s.fechaVencimiento || s.fechaRenovacion));
     if (vehicleSeguros.length) {
+        const segsByComp = {};
         vehicleSeguros.forEach(s => {
+            const compKey = (s.compania || 'seguro').toLowerCase().trim();
+            if (!segsByComp[compKey] || (s.fechaVencimiento || s.fechaRenovacion) > (segsByComp[compKey].fechaVencimiento || segsByComp[compKey].fechaRenovacion)) {
+                segsByComp[compKey] = s;
+            }
+        });
+        Object.values(segsByComp).forEach(s => {
             const info = getNextSeguroPaymentInfo(s);
             if (info && info.date) {
                 pushAlert(info.label, info.date);
