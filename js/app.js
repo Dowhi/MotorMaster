@@ -3469,12 +3469,12 @@ function applyTheme(theme) {
   if (theme === 'light') {
     html.classList.add('light-mode');
     html.classList.remove('dark');
-    if (themeIcon) themeIcon.textContent = 'light_mode';
+    if (themeIcon) themeIcon.textContent = '☀️';
     if (themeText) themeText.textContent = 'Modo Claro';
   } else {
     html.classList.remove('light-mode');
     html.classList.add('dark');
-    if (themeIcon) themeIcon.textContent = 'dark_mode';
+    if (themeIcon) themeIcon.textContent = '🌙';
     if (themeText) themeText.textContent = 'Modo Oscuro';
   }
 }
