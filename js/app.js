@@ -1049,19 +1049,13 @@ function renderDashboard() {
     </div>
 
     ${(() => {
-      const KM_MAINT = [
-        { id: 'aceite',       label: 'Aceite / Lubricante',   icon: '🛢️', keywords: ['aceite','oil','lubric'],              defaultInterval: 15000 },
-        { id: 'filtros',      label: 'Filtros',               icon: '🔧', keywords: ['filtro','filter','aire','habitaculo'],  defaultInterval: 30000 },
-        { id: 'frenos',       label: 'Frenos / Pastillas',    icon: '🛑', keywords: ['fren','pastilla','brake','disco'],       defaultInterval: 60000 },
-        { id: 'distribucion', label: 'Distribución / Correa', icon: '⚙️', keywords: ['distribuc','correa','timing','cadena'],  defaultInterval: 120000 },
-      ];
       const kmInterv = state.kmIntervals?.[vid] || {};
       const curKm = parseFloat(vehicle.km) || 0;
-      const rows = KM_MAINT.map(type => {
+      const rows = KM_TYPES.map(type => {
         const interval = parseFloat(kmInterv[type.id]) || type.defaultInterval;
-        const matching = revs.filter(r => type.keywords.some(kw => (r.operacion||'').toLowerCase().includes(kw)));
-        if (!matching.length) return `<div class="km-row"><div class="km-label">${type.icon} ${type.label}</div><div class="km-bar-wrap"><div class="km-bar" style="width:0%;background:var(--clr-border)"></div></div><div class="km-info" style="color:var(--clr-text-muted)">Sin registros</div></div>`;
-        const lastKm = Math.max(...matching.map(r => parseFloat(r.km)||0));
+        const matchingEvents = typeof getMatchingMaintenanceEvents === 'function' ? getMatchingMaintenanceEvents(vid, type.keywords) : [];
+        if (!matchingEvents.length) return `<div class="km-row"><div class="km-label">${type.icon} ${type.label}</div><div class="km-bar-wrap"><div class="km-bar" style="width:0%;background:var(--clr-border)"></div></div><div class="km-info" style="color:var(--clr-text-muted)">Sin registros</div></div>`;
+        const lastKm = Math.max(...matchingEvents.map(e => e.km));
         const nextKm = lastKm + interval;
         const pct = Math.min(Math.round(((curKm - lastKm) / interval) * 100), 110);
         const kmLeft = Math.round(nextKm - curKm);
@@ -1168,19 +1162,20 @@ function renderSettings() {
           ${v ? `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
               ${[
-        { id: 'aceite', label: 'Aceite', min: 5000, max: 30000, step: 1000 },
-        { id: 'filtros', label: 'Filtros', min: 5000, max: 40000, step: 5000 },
-        { id: 'frenos', label: 'Pastillas/Frenos', min: 5000, max: 80000, step: 5000 },
-        { id: 'distribucion', label: 'Distribución', min: 60000, max: 200000, step: 10000, wide: true }
+        { id: 'aceite', label: 'Aceite', min: 5000, max: 30000, step: 1000, def: 15000 },
+        { id: 'filtros', label: 'Filtros', min: 5000, max: 40000, step: 5000, def: 30000 },
+        { id: 'frenos', label: 'Pastillas/Frenos', min: 5000, max: 80000, step: 5000, def: 60000 },
+        { id: 'neumaticos', label: 'Neumáticos / Cubiertas', min: 10000, max: 80000, step: 5000, def: 40000 },
+        { id: 'distribucion', label: 'Distribución', min: 60000, max: 200000, step: 10000, def: 120000, wide: true }
       ].map(item => `
                 <div class="space-y-2 ${item.wide ? 'md:col-span-2' : ''}">
                   <div class="flex justify-between items-center">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">${item.label}</label>
-                    <span class="text-primary font-mono text-xs font-bold">${(s.kmIntervals[v.id]?.[item.id] || (item.id === 'distribucion' ? 120000 : item.id === 'frenos' ? 60000 : item.id === 'filtros' ? 30000 : 15000)).toLocaleString()} km</span>
+                    <span class="text-primary font-mono text-xs font-bold">${(s.kmIntervals[v.id]?.[item.id] || item.def).toLocaleString()} km</span>
                   </div>
                   <input type="range" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary" 
                     min="${item.min}" max="${item.max}" step="${item.step}" 
-                    value="${s.kmIntervals[v.id]?.[item.id] || (item.id === 'distribucion' ? 120000 : item.id === 'frenos' ? 60000 : item.id === 'filtros' ? 30000 : 15000)}" 
+                    value="${s.kmIntervals[v.id]?.[item.id] || item.def}" 
                     oninput="this.previousElementSibling.querySelector('span').textContent = parseInt(this.value).toLocaleString() + ' km'"
                     onchange="setKmInterval('${v.id}','${item.id}',this.value)">
                 </div>

@@ -9,16 +9,59 @@ function getDaysUntil(dateStr) {
 
 /* ─── KM-BASED ALERT DETECTION ─────────────────────────── */
 const KM_TYPES = [
-  { id: 'aceite',       keywords: ['aceite', 'oil', 'lubric'],                   label: 'Aceite / Lubricante',   defaultInterval: 15000 },
-  { id: 'filtros',      keywords: ['filtro', 'filter', 'aire', 'habitaculo'],     label: 'Filtros',               defaultInterval: 30000 },
-  { id: 'frenos',       keywords: ['fren', 'pastilla', 'brake', 'disco freno'],   label: 'Frenos / Pastillas',    defaultInterval: 60000 },
-  { id: 'distribucion', keywords: ['distribuc', 'correa', 'timing', 'cadena'],    label: 'Distribución / Correa', defaultInterval: 120000 },
+  { id: 'aceite',       label: 'Aceite / Lubricante',   icon: '🛢️', keywords: ['aceite', 'oil', 'lubric', 'valvulina', 'cárter', 'carter'], defaultInterval: 15000 },
+  { id: 'filtros',      label: 'Filtros',               icon: '🔧', keywords: ['filtro', 'filter', 'habitaculo', 'habitáculo', 'polen', 'combustible', 'gasoil', 'gasolina', 'aire'], defaultInterval: 30000 },
+  { id: 'frenos',       label: 'Frenos / Pastillas',    icon: '🛑', keywords: ['fren', 'pastilla', 'brake', 'disco', 'zapatas', 'latiguillo'], defaultInterval: 60000 },
+  { id: 'distribucion', label: 'Distribución / Correa', icon: '⚙️', keywords: ['distribuc', 'correa', 'timing', 'cadena', 'bomba agua', 'bomba de agua', 'tensor'], defaultInterval: 120000 },
+  { id: 'neumaticos',   label: 'Neumáticos / Cubiertas', icon: '🛞', keywords: ['neumatic', 'neumátic', 'rueda', 'cubierta', 'goma', 'tire', 'pneu', 'alineacion', 'equilibrado'], defaultInterval: 40000 },
 ];
 
 /**
- * Detecta alertas basadas en km de mantenimiento.
- * Compara el km actual del vehículo con el último km registrado
- * para cada tipo de mantenimiento más su intervalo configurado.
+ * Busca todos los eventos de mantenimiento para un vehículo cruzando:
+ * 1. Revisiones (operación)
+ * 2. Averías (síntomas, diagnóstico, solución)
+ * 3. Recambios (nombre)
+ * Devuelve un array de objetos { km, fecha, source, title }.
+ */
+function getMatchingMaintenanceEvents(vehicleId, keywords) {
+    const state = getState();
+    const events = [];
+
+    // 1. Revisiones
+    (state.revisiones || [])
+        .filter(r => r.vehicleId === vehicleId && parseFloat(r.km) > 0)
+        .forEach(r => {
+            const text = (r.operacion || '').toLowerCase();
+            if (keywords.some(kw => text.includes(kw))) {
+                events.push({ km: parseFloat(r.km), fecha: r.fecha || '', source: 'revision', title: r.operacion });
+            }
+        });
+
+    // 2. Averías / Reparaciones en Taller
+    (state.averias || [])
+        .filter(a => a.vehicleId === vehicleId && parseFloat(a.km) > 0)
+        .forEach(a => {
+            const text = `${a.solucion || ''} ${a.sintomas || ''} ${a.diagnostico || ''}`.toLowerCase();
+            if (keywords.some(kw => text.includes(kw))) {
+                events.push({ km: parseFloat(a.km), fecha: a.fecha || '', source: 'averia', title: a.solucion || a.sintomas });
+            }
+        });
+
+    // 3. Recambios y piezas montadas
+    (state.recambios || [])
+        .filter(rec => rec.vehicleId === vehicleId && parseFloat(rec.km) > 0)
+        .forEach(rec => {
+            const text = (rec.nombre || '').toLowerCase();
+            if (keywords.some(kw => text.includes(kw))) {
+                events.push({ km: parseFloat(rec.km), fecha: rec.fecha || '', source: 'recambio', title: rec.nombre });
+            }
+        });
+
+    return events;
+}
+
+/**
+ * Detecta alertas basadas en km de mantenimiento cruzando Revisiones, Averías y Recambios.
  */
 function collectKmAlerts(vehicleId) {
     const state = getState();
@@ -28,21 +71,15 @@ function collectKmAlerts(vehicleId) {
     const alerts = [];
     const currentKm = parseFloat(vehicle.km) || 0;
     const intervals = state.kmIntervals?.[vehicleId] || {};
-    const revisiones = state.revisiones.filter(r => r.vehicleId === vehicleId);
 
     KM_TYPES.forEach(type => {
         const interval = parseFloat(intervals[type.id]) || type.defaultInterval;
+        const matchingEvents = getMatchingMaintenanceEvents(vehicleId, type.keywords);
 
-        // Buscar revisiones que coincidan con este tipo por palabra clave
-        const matching = revisiones.filter(r => {
-            const op = (r.operacion || '').toLowerCase();
-            return type.keywords.some(kw => op.includes(kw));
-        });
+        if (!matchingEvents.length) return; // Sin historial en ninguna sección
 
-        if (!matching.length) return; // Sin historial, no podemos calcular
-
-        // Último km en que se hizo este tipo de mantenimiento
-        const lastKm = Math.max(...matching.map(r => parseFloat(r.km) || 0));
+        // Último km registrado en Revisiones, Averías o Recambios
+        const lastKm = Math.max(...matchingEvents.map(e => e.km));
         const nextKm = lastKm + interval;
         const kmRemaining = nextKm - currentKm;
         // Umbral de alerta: 10% del intervalo o 1500 km, lo que sea mayor
