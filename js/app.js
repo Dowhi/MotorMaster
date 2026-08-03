@@ -851,7 +851,7 @@ function openSaleReport(vid) {
       <h3 style="border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 15px;">Historial de Recambios</h3>
       <table class="report-table" style="width:100%; border-collapse: collapse;">
         <thead><tr><th style="width:15%">FECHA</th><th style="width:40%">PIEZA/ARTÍCULO</th><th style="width:40%">TIENDA</th><th style="width:8%;text-align:center">KMS</th><th style="width:8%;text-align:center">COSTE</th></tr></thead>
-        <tbody>${recs.length ? recs.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).map(r => `<tr><td>${fmt.date(r.fecha || '')}</td><td>${r.nombre}${r.marca || r.referencia ? `<br><small style="opacity:0.7">${r.marca || ''} ${r.referencia || ''}</small>` : ''}</td><td>${r.tienda || '—'}</td><td style="text-align:right">${r.km}</td><td style="text-align:right">${fmt.currency(r.precio)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
+        <tbody>${recs.length ? recs.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).map(r => `<tr><td>${fmt.date(r.fecha || '')}</td><td>${r.nombre}${r.marca ? `<br><small style="opacity:0.7">${r.marca}</small>` : ''}</td><td>${r.tienda || '—'}</td><td style="text-align:right">${r.km}</td><td style="text-align:right">${fmt.currency(r.precio)}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center; padding: 10px;">Sin registros</td></tr>'}</tbody>
       </table>
       <p style="margin-top:40px; font-size:0.8rem; text-align:center; opacity: 0.7;">Informe generado por MotorMaster — Valor de mercado incrementado por transparencia técnica.</p>
     </div>
