@@ -718,13 +718,13 @@ function viewDocument(id) {
     content = `
       <div style="padding: 30px 20px; text-align: center; background: var(--clr-surface-2); border-radius: 12px; border: 1px dashed var(--clr-border);">
         <div style="font-size: 3rem; margin-bottom: 15px;">📄</div>
-        <h3 style="margin-bottom: 10px; color: var(--clr-text-1);">${d.nombre}</h3>
+        <h3 style="margin-bottom: 10px; color: var(--clr-text);">${d.nombre}</h3>
         <p style="color: var(--clr-text-2); margin-bottom: 25px; font-size: 0.9rem;">El documento está listo para ser visualizado.</p>
         <a href="${d.fileData}" target="_blank" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; padding: 12px 24px;">
            <span>👁️</span> VER DOCUMENTO COMPLETO
         </a>
       </div>
-      <div style="margin-top: 15px; font-size: 0.8rem; color: var(--clr-text-3);">
+      <div style="margin-top: 15px; font-size: 0.8rem; color: var(--clr-text-muted);">
         * Si no se abre, pulsa el botón de descargar abajo.
       </div>
     `;
@@ -2160,7 +2160,7 @@ function renderITV() {
           <span class="gasto">${fmt.currency(i.coste || 0)}</span>
         </td>
         <td data-label="Informe / Recibo">
-          ${numRecibo ? `<div style="font-weight:700;font-size:0.85rem;color:var(--clr-text-main)">🧾 ${numRecibo}</div>` : ''}
+          ${numRecibo ? `<div style="font-weight:700;font-size:0.85rem;color:var(--clr-text)">🧾 ${numRecibo}</div>` : ''}
           ${i.adjunto
             ? `<button class="btn btn-xs btn-adjunto-pill" style="margin-top:4px" onclick="viewItvAdjunto('${i.id}')">📄 Ver Informe</button>`
             : linkedDoc

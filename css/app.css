@@ -1600,6 +1600,7 @@ body.workshop-mode .main-content {
     background: var(--clr-surface-2);
     border: 1px solid var(--clr-border);
     margin-bottom: 12px;
+    color: var(--clr-text);
     transition: all 0.2s;
 }
 
@@ -1621,28 +1622,34 @@ body.workshop-mode .main-content {
 
 .alert-card-title {
     font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--clr-text) !important;
     margin-bottom: 4px;
 }
 
 .alert-card-vehicle {
-    font-size: 0.7rem;
-    color: var(--clr-accent);
+    font-size: 0.72rem;
+    color: #F59E0B !important;
+    font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
 .alert-card-days {
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 600;
+    color: var(--clr-text-2) !important;
     margin-top: 5px;
 }
 
 .alert-card.alert-danger {
     border-left: 4px solid var(--clr-danger);
+    background: var(--clr-surface-2);
 }
 
 .alert-card.alert-warning {
     border-left: 4px solid var(--clr-warning);
+    background: var(--clr-surface-2);
 }
 
 /* ===== FILTER BAR ===== */

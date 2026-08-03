@@ -31,9 +31,9 @@
   --clr-info-dim:       rgba(56, 189, 248, 0.12);
 
   /* ─── TEXTO Y TIPOGRAFÍA HIGH-CONTRAST ──────────────── */
-  --clr-text:          #F8FAFC;
-  --clr-text-2:        #94A3B8;
-  --clr-text-muted:    #64748B;
+  --clr-text:          #FFFFFF;
+  --clr-text-2:        #E2E8F0;
+  --clr-text-muted:    #94A3B8;
 
   --font-head:         'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body:         'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -99,8 +99,8 @@ html.light-mode {
   --clr-accent-glow:    rgba(0, 82, 204, 0.14);
 
   --clr-text:          #0F172A;
-  --clr-text-2:        #475569;
-  --clr-text-muted:    #64748B;
+  --clr-text-2:        #1E293B;
+  --clr-text-muted:    #475569;
 
   --shadow-sm:         0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-card:       0 4px 16px -2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05);
